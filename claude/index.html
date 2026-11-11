@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="喝水啦">
+<meta name="theme-color" content="#eaf7ff">
+<meta name="color-scheme" content="light">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-180.png">
+<title>喝水啦</title>
+<style>
+:root{
+  --ink:#16324a; --sub:#56738a; --line:#dbe7f0;
+  --sky1:#e6f5ff; --sky2:#f8fcff;
+  --accent:#1f7fd1; --accent-soft:#e3f1fc;
+  --leaf:#5cbf63; --warn:#e8743b;
+  --card:#ffffff;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;
+  color:var(--ink);
+  background:linear-gradient(180deg,var(--sky1),var(--sky2) 60%);
+  overflow:hidden; -webkit-user-select:none; user-select:none;
+  -webkit-text-size-adjust:100%;
+}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
+
+/* ---------- 水位 ---------- */
+#water{position:fixed;left:0;right:0;bottom:0;height:var(--level,10%);z-index:0;pointer-events:none;
+  transition:height 1.4s cubic-bezier(.3,1.25,.5,1)}
+#water .fill{position:absolute;inset:0;background:linear-gradient(180deg,#9bd8ff 0%,#5db5f1 40%,#3a8fd6 100%)}
+.wave{position:absolute;left:0;width:200%;height:34px}
+.wave.w1{top:-33px;fill:#9bd8ff;animation:wave 6s linear infinite}
+.wave.w2{top:-42px;fill:#c8eaff;opacity:.75;animation:wave 10s linear infinite reverse}
+@keyframes wave{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.bub{position:absolute;bottom:-10px;width:10px;height:10px;border-radius:50%;background:#ffffff70;animation:rise 7s ease-in infinite}
+@keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(-55vh);opacity:0}}
+
+/* ---------- 首頁 ---------- */
+#home{position:relative;z-index:1;height:100%;display:flex;flex-direction:column;align-items:center;
+  padding:calc(env(safe-area-inset-top) + 12px) 16px calc(env(safe-area-inset-bottom) + 18px)}
+.topbar{width:100%;max-width:440px;display:flex;align-items:center;gap:8px}
+.chip{font-size:13px;font-weight:600;color:var(--sub);background:#ffffffb3;border-radius:999px;padding:6px 11px;white-space:nowrap}
+.chip b{color:var(--ink)}
+.topbar .grow{flex:1}
+.iconbtn{width:40px;height:40px;border-radius:50%;background:#ffffffb3;display:grid;place-items:center}
+.iconbtn svg{width:22px;height:22px;stroke:var(--ink)}
+.next{margin-top:14px;font-size:14px;color:var(--sub)}
+.next b{color:var(--ink)}
+.count{margin-top:2px;font-size:60px;font-weight:800;letter-spacing:-1px;line-height:1.05;font-variant-numeric:tabular-nums}
+.count small{font-size:24px;font-weight:700;color:var(--sub);letter-spacing:0}
+.count-label{font-size:13px;color:var(--sub);font-weight:600}
+
+.stage-area{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.bubble{position:relative;max-width:310px;background:var(--card);border-radius:18px;padding:12px 16px;font-size:16px;line-height:1.45;
+  box-shadow:0 6px 18px #2f6e9a1f;text-align:center;font-weight:600;min-height:48px}
+.bubble::after{content:"";position:absolute;left:50%;bottom:-8px;width:16px;height:16px;background:var(--card);transform:translateX(-50%) rotate(45deg);border-radius:3px}
+.bubble.pop{animation:pop .35s ease}
+@keyframes pop{0%{transform:scale(.85);opacity:.4}70%{transform:scale(1.04)}100%{transform:scale(1);opacity:1}}
+#plant{width:min(58vw,230px);max-height:34vh;margin-top:12px;cursor:pointer;display:block}
+#plant.bounce{animation:bounce .5s ease}
+@keyframes bounce{0%,100%{transform:translateY(0)}30%{transform:translateY(-10px) scale(1.03)}60%{transform:translateY(2px)}}
+#plant.ring{animation:ring .8s ease 2}
+@keyframes ring{0%,100%{transform:rotate(0)}20%{transform:rotate(-6deg)}40%{transform:rotate(6deg)}60%{transform:rotate(-4deg)}80%{transform:rotate(3deg)}}
+.sway{transform-origin:100px 145px;animation:sway 4s ease-in-out infinite}
+@keyframes sway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
+.thirsty .sway{animation-duration:7s;filter:saturate(.55) brightness(.95)}
+.plant-meta{margin-top:8px;background:#ffffffc4;border-radius:14px;padding:7px 14px;font-size:13px;color:var(--sub);text-align:center;min-width:200px}
+.plant-meta b{color:var(--ink)}
+.bar{height:6px;background:#d6e8f5;border-radius:3px;margin-top:6px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--leaf);border-radius:3px;transition:width .6s}
+
+.drink{width:100%;max-width:380px;height:64px;border-radius:32px;background:#fff;color:var(--accent);font-size:20px;font-weight:800;
+  box-shadow:0 10px 26px #1a5c8f33;transition:transform .12s;margin-top:14px;flex:none}
+.drink:active{transform:scale(.96)}
+
+/* 提醒橫幅 */
+#banner{position:fixed;z-index:8;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 8px);max-width:440px;margin:auto;
+  background:#fff;border-radius:18px;padding:12px 14px;box-shadow:0 12px 30px #0d3a5c33;display:flex;gap:10px;align-items:center;
+  transform:translateY(-150%);transition:transform .45s cubic-bezier(.3,1.3,.5,1)}
+#banner.show{transform:translateY(0)}
+#banner .ic{width:38px;height:38px;border-radius:10px;background:var(--accent-soft);display:grid;place-items:center;font-size:20px;flex:none}
+#banner .t{font-size:12px;color:var(--sub);font-weight:700}
+#banner .b{font-size:15px;font-weight:600}
+
+/* Toast */
+#toast{position:fixed;z-index:8;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translate(-50%,20px);opacity:0;
+  background:#16324aee;color:#fff;border-radius:999px;padding:9px 8px 9px 16px;font-size:14px;display:flex;align-items:center;gap:10px;
+  transition:.25s;pointer-events:none;white-space:nowrap}
+#toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+#toast button{color:#9bd8ff;font-weight:700;padding:2px 10px}
+
+.drop{position:fixed;z-index:7;top:-30px;font-size:22px;pointer-events:none;animation:fall linear forwards}
+@keyframes fall{to{transform:translateY(110vh) rotate(260deg)}}
+
+/* ---------- 設定 ---------- */
+#settings{position:fixed;inset:0;z-index:5;background:#f2f7fb;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  transform:translateY(100%);transition:transform .35s ease;padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 32px);
+  -webkit-user-select:text;user-select:text}
+#settings.open{transform:translateY(0)}
+.s-wrap{max-width:480px;margin:0 auto}
+.s-head{display:flex;align-items:center;justify-content:space-between;padding:6px 0 10px;position:sticky;top:0;background:#f2f7fb;z-index:2}
+.s-head h1{font-size:22px;margin:0}
+.done{color:var(--accent);font-weight:700;font-size:17px;padding:8px 4px}
+.card{background:#fff;border-radius:16px;padding:4px 16px;margin-bottom:14px}
+.card h2{font-size:13px;color:var(--sub);margin:14px 0 4px;font-weight:700;letter-spacing:.5px}
+.sec-title{font-size:13px;color:var(--sub);font-weight:700;margin:18px 4px 6px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:50px;border-bottom:1px solid var(--line);padding:6px 0}
+.row:last-child{border-bottom:0}
+.row label{font-size:16px}
+.row .hint{font-size:12px;color:var(--sub)}
+input[type=time],select,input[type=text]{font:inherit;font-size:16px;color:var(--ink);background:#eef4f9;border:0;border-radius:10px;padding:7px 10px;min-height:36px}
+input[type=text]{width:140px;text-align:right}
+.seg{display:flex;background:#eef4f9;border-radius:11px;padding:3px;margin:12px 0}
+.seg button{flex:1;padding:8px 0;border-radius:9px;font-weight:600;font-size:15px;color:var(--sub)}
+.seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px #0000001a}
+.switch{position:relative;width:51px;height:31px;flex:none}
+.switch input{opacity:0;width:0;height:0;position:absolute}
+.switch span{position:absolute;inset:0;background:#d3dee7;border-radius:31px;transition:.2s}
+.switch span::after{content:"";position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px #0003;transition:.2s}
+.switch input:checked+span{background:#34c759}
+.switch input:checked+span::after{transform:translateX(20px)}
+.times{display:flex;flex-wrap:wrap;gap:8px;padding:10px 0}
+.tchip{display:flex;align-items:center;background:#eef4f9;border-radius:10px;padding-right:4px}
+.tchip input{background:transparent;padding:6px 4px 6px 10px}
+.tchip button{width:26px;height:26px;border-radius:50%;color:var(--sub);font-size:18px;line-height:1}
+.addt{background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:6px 12px;font-weight:700}
+.preview{font-size:13px;color:var(--sub);line-height:1.6;padding:12px 0}
+.preview b{color:var(--ink)}
+.preview .warn{color:var(--warn)}
+.btn{display:block;width:100%;text-align:center;padding:13px;border-radius:12px;font-weight:700;font-size:16px;margin:12px 0}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.soft{background:var(--accent-soft);color:var(--accent)}
+.btn.danger{background:#fdecec;color:#d33b3b}
+.note{font-size:13px;color:var(--sub);line-height:1.6;margin:4px 0 12px}
+.status{font-size:13px;font-weight:700}
+.status.ok{color:#2b9a48}.status.no{color:var(--warn)}
+
+@media (prefers-reduced-motion:reduce){
+  *{animation:none!important;transition:none!important}
+}
+</style>
+</head>
+<body>
+
+<div id="water" aria-hidden="true">
+  <svg class="wave w2" viewBox="0 0 1200 34" preserveAspectRatio="none"><path d="M0 17 Q150 0 300 17 T600 17 T900 17 T1200 17 V34 H0Z"/></svg>
+  <svg class="wave w1" viewBox="0 0 1200 34" preserveAspectRatio="none"><path d="M0 17 Q150 34 300 17 T600 17 T900 17 T1200 17 V34 H0Z"/></svg>
+  <div class="fill"></div>
+  <span class="bub" style="left:12%;animation-delay:0s"></span>
+  <span class="bub" style="left:33%;width:7px;height:7px;animation-delay:2.4s"></span>
+  <span class="bub" style="left:58%;animation-delay:1.1s"></span>
+  <span class="bub" style="left:80%;width:6px;height:6px;animation-delay:3.6s"></span>
+</div>
+
+<main id="home">
+  <div class="topbar">
+    <span class="chip" id="dateChip"></span>
+    <span class="chip" id="streakChip"></span>
+    <span class="grow"></span>
+    <button class="iconbtn" id="openSettings" aria-label="設定">
+      <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </div>
+
+  <div class="next" id="nextText"></div>
+  <div class="count" id="count">0<small> / 0</small></div>
+  <div class="count-label">今天喝了（次）</div>
+
+  <div class="stage-area">
+    <div class="bubble" id="bubble"></div>
+    <svg id="plant" viewBox="0 0 200 215" role="img" aria-label="小植物"></svg>
+    <div class="plant-meta">
+      <div id="plantInfo"></div>
+      <div class="bar"><i id="plantBar"></i></div>
+    </div>
+  </div>
+
+  <button class="drink" id="drinkBtn">我喝了 💧</button>
+</main>
+
+<div id="banner" role="status">
+  <div class="ic">💧</div>
+  <div><div class="t">喝水啦・現在</div><div class="b" id="bannerText"></div></div>
+</div>
+<div id="toast"><span id="toastText"></span><button id="undoBtn">撤回</button></div>
+
+<!-- ---------- 設定 ---------- -->
+<section id="settings" aria-label="設定">
+  <div class="s-wrap">
+    <div class="s-head"><h1>設定</h1><button class="done" id="closeSettings">完成</button></div>
+
+    <div class="sec-title">提醒頻率</div>
+    <div class="card">
+      <div class="seg" id="modeSeg">
+        <button data-mode="interval">固定間隔</button>
+        <button data-mode="custom">自訂時間點</button>
+      </div>
+      <div id="intervalBox">
+        <div class="row">
+          <label for="interval">每隔</label>
+          <select id="interval">
+            <option value="30">30 分鐘</option><option value="45">45 分鐘</option>
+            <option value="60">1 小時</option><option value="90">1.5 小時</option>
+            <option value="120">2 小時</option><option value="180">3 小時</option>
+          </select>
+        </div>
+        <div class="row">
+          <div><label for="startAt">第一次提醒</label><div class="hint">之後照間隔一路提醒，遇到勿擾就跳過</div></div>
+          <input type="time" id="startAt">
+        </div>
+      </div>
+      <div id="customBox">
+        <div class="times" id="timesList"></div>
+      </div>
+      <div class="preview" id="preview"></div>
+    </div>
+
+    <div class="sec-title">勿擾時段</div>
+    <div class="card">
+      <div class="row">
+        <label for="quietOn">開啟勿擾</label>
+        <span class="switch"><input type="checkbox" id="quietOn"><span></span></span>
+      </div>
+      <div class="row" id="quietRow1"><label for="quietStart">開始</label><input type="time" id="quietStart"></div>
+      <div class="row" id="quietRow2"><label for="quietEnd">結束</label><input type="time" id="quietEnd"></div>
+    </div>
+
+    <div class="sec-title">我的植物</div>
+    <div class="card">
+      <div class="row"><label for="plantName">名字</label><input type="text" id="plantName" maxlength="8"></div>
+    </div>
+
+    <div class="sec-title">讓 iPhone 準時叫你</div>
+    <div class="card">
+      <div class="row">
+        <div><label>App 開著時的通知</label><div class="status" id="notifStatus"></div></div>
+        <button class="addt" id="notifBtn">開啟</button>
+      </div>
+      <p class="note">iPhone 會把關掉的網頁 App 暫停，所以 App 沒開著的時候，要靠行事曆幫忙提醒。按下面的按鈕把整天的提醒排進 iPhone 行事曆（每天重複，每次的嗆人台詞都不一樣）。改了提醒設定記得重新加入一次，並刪掉舊的行事曆事件。</p>
+      <button class="btn primary" id="icsBtn">加入 iPhone 行事曆提醒</button>
+    </div>
+
+    <div class="sec-title">其他</div>
+    <div class="card">
+      <button class="btn soft" id="resetToday">今天的次數歸零</button>
+      <button class="btn danger" id="resetAll">全部重來（植物也會變回種子）</button>
+    </div>
+  </div>
+</section>
+
+<script>
+/* ================== 文案 ================== */
+const LINES = {
+  remind: [
+    "喂～水杯在哭了，你聽到沒？",
+    "我都快變仙人掌了，你還不喝？",
+    "喝水時間到！不要假裝沒看到 👀",
+    "你的腎臟傳訊息給我，說它很想你。",
+    "再不喝水，我就自己去倒了（可惜我沒有手）",
+    "叮咚！你的喝水外送到了，請簽收。",
+    "人類 70% 是水，你現在大概剩 69%。",
+    "放下手機…啊不對，先按「我喝了」再放下。",
+    "今天的你，乾得像一塊蘇打餅乾。",
+    "喝一口就好，我不貪心。好啦，兩口。",
+    "{name} 舉牌抗議：我要喝水！你也要！",
+    "水杯：我等你等到都退冰了。",
+    "嘴唇乾乾的那個人，對，就是你。",
+    "現在喝水，等一下會變好看（大概）。",
+    "提醒你喝水的我，是不是很貼心？快誇我。",
+    "再忙也不差這 10 秒吧？",
+    "咕嚕咕嚕的聲音，我想聽。",
+    "你再滑一下，我就再枯一點。"
+  ],
+  drank: [
+    "好喝吧？我就說。",
+    "咕嚕～我感覺自己又長高了 0.1 公分。",
+    "乖，這才是我認識的你。",
+    "水分 +1，氣色 +1 ✨",
+    "你的腎臟說謝謝。",
+    "這口喝得很有誠意，給過。",
+    "好啦，原諒你剛剛的拖延。",
+    "就這樣保持，別讓我再催你喔。",
+    "我宣布：你是今天的喝水之星（暫定）。",
+    "叮！成就解鎖：會照顧自己的人。",
+    "有喝有保佑，{name} 繼續長大中 🌱",
+    "很好，下一杯我也會盯著你。"
+  ],
+  overdue: [
+    "欠我 {owe} 杯喔，我都有記帳。",
+    "你是不是忘記我了…葉子都垂下來了。",
+    "已讀不喝，太過分了吧。",
+    "我渴到開始寫遺書了（誇張）",
+    "催第二次了喔，第三次我要叫你全名。",
+    "你的水杯是不是已經長灰塵了？",
+    "我不是在生氣，我只是很乾。",
+    "還欠 {owe} 次，現在補喝還來得及。"
+  ],
+  goal: [
+    "今日目標達成！你是喝水界的狠角色 🏆",
+    "全部喝完了？我開始有點崇拜你了。",
+    "今日任務完成，可以理直氣壯地耍廢了。",
+    "滿分！{name} 今晚為你心裡開一朵花。",
+    "達標！明天也要這樣喔，我會記得。"
+  ],
+  extra: [
+    "超額達成？你是駱駝轉世嗎？",
+    "喝很多很好，但別把自己泡發了。",
+    "加碼一杯！這份努力我收下了。"
+  ],
+  idle: [
+    "幹嘛戳我，要喝水嗎？",
+    "我在光合作用，請勿打擾（但你可以喝水）。",
+    "今天進度不錯嘛，繼續保持。",
+    "再戳我就要收費了，一次一杯水。",
+    "我今天心情很好，因為你有乖乖喝水。",
+    "下一次提醒是 {next}，我會準時出現 😎"
+  ],
+  allDone: [
+    "今天的提醒都結束了，你表現得不錯。",
+    "收工！明天見，記得早上先喝一杯。"
+  ],
+  quiet: [
+    "勿擾中…zzZ 渴了自己喝喔。",
+    "我在睡覺，明天見。",
+    "夜深了，喝一小口就好，不然半夜要跑廁所。"
+  ],
+  morning: [
+    "早安！今天也要一起喝水喔。",
+    "新的一天，先來一杯開機水吧 ☀️"
+  ],
+  stageUp: "我長大了！{name} 變成「{stage}」了 🌿"
+};
+
+const STAGES = [
+  { name:"種子",   at:0 },
+  { name:"冒芽",   at:3 },
+  { name:"小苗",   at:10 },
+  { name:"嫩葉",   at:25 },
+  { name:"小盆栽", at:50 },
+  { name:"含苞",   at:90 },
+  { name:"開花",   at:150 }
+];
+
+/* ================== 資料 ================== */
+const LS_KEY = "hoshuila-v1";
+const DEFAULTS = {
+  mode:"interval", interval:90, startAt:"08:00",
+  times:["08:30","10:30","12:30","15:00","17:00","19:30"],
+  quietOn:true, quietStart:"22:30", quietEnd:"07:30",
+  plantName:"小芽"
+};
+const pad = n => String(n).padStart(2,"0");
+const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
+const fmt = m => pad(Math.floor(m/60)) + ":" + pad(m%60);
+const dayKey = (d=new Date()) => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const nowMin = () => { const d=new Date(); return d.getHours()*60+d.getMinutes(); };
+const pick = a => a[Math.floor(Math.random()*a.length)];
+const $ = s => document.querySelector(s);
+
+function freshState(){ return { day:dayKey(), count:0, total:0, streak:0, lastFired:-1, lastDrink:0 }; }
+function load(){
+  try{
+    const j = JSON.parse(localStorage.getItem(LS_KEY));
+    if (j) return { settings:{...DEFAULTS, ...j.settings}, state:{...freshState(), ...j.state} };
+  }catch(e){}
+  return { settings:{...DEFAULTS}, state:freshState() };
+}
+let data = load();
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){} }
+
+/* ================== 排程 ================== */
+function isQuiet(m, s=data.settings){
+  if (!s.quietOn) return false;
+  const a = toMin(s.quietStart), b = toMin(s.quietEnd);
+  if (a === b) return false;
+  return a < b ? (m >= a && m < b) : (m >= a || m < b);
+}
+function slots(s=data.settings){
+  let list = [];
+  if (s.mode === "interval"){
+    const step = Math.max(15, Number(s.interval)||60);
+    for (let m = toMin(s.startAt); m < 1440; m += step) list.push(m);
+  } else {
+    list = s.times.filter(Boolean).map(toMin);
+  }
+  return [...new Set(list)].filter(m => !isQuiet(m, s)).sort((a,b)=>a-b);
+}
+const goal = () => slots().length;
+function owe(){
+  const n = nowMin();
+  const due = slots().filter(m => m <= n).length;
+  return Math.max(0, due - data.state.count);
+}
+function stageOf(total){
+  let i = 0;
+  STAGES.forEach((s,k) => { if (total >= s.at) i = k; });
+  return i;
+}
+
+function rollover(){
+  const today = dayKey();
+  if (data.state.day === today) return;
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const met = data.state.count >= goal() && goal() > 0;
+  data.state.streak = (data.state.day === dayKey(y) && met) ? data.state.streak + 1 : 0;
+  data.state.day = today;
+  data.state.count = 0;
+  data.state.lastFired = -1;
+  save();
+  say(pick(LINES.morning));
+}
+
+/* ================== 植物 ================== */
+function leaf(y, size, side, droop){
+  const a = droop ? 30 : -28;
+  const mirror = side < 0 ? "scale(-1 1)" : "";
+  return `<g transform="translate(100 ${y}) ${mirror} rotate(${a}) scale(${size})">
+    <path d="M0 0 C8 -15 32 -17 44 -4 C32 7 12 9 0 0Z" fill="#62c467"/>
+    <path d="M2 -1 C14 -6 26 -7 40 -4" stroke="#8fdc8f" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+  </g>`;
+}
+const LEAVES = [
+  [], [[1,.42]], [[1,.65]], [[.5,.7],[1,.75]], [[.36,.8],[.66,.88],[1,.72]],
+  [[.36,.85],[.66,.9],[.92,.7]], [[.36,.9],[.66,.95],[.9,.72]]
+];
+const HEIGHT = [0,20,40,62,84,100,108];
+
+function face(mood){
+  const cheeks = `<ellipse cx="78" cy="188" rx="6" ry="3.5" fill="#ff9d8a" opacity=".7"/><ellipse cx="122" cy="188" rx="6" ry="3.5" fill="#ff9d8a" opacity=".7"/>`;
+  const st = `stroke="#5a2e1c" stroke-width="3" fill="none" stroke-linecap="round"`;
+  switch(mood){
+    case "thirsty": return `<path d="M80 178 l7 -3 M113 175 l7 3" ${st}/><circle cx="85" cy="181" r="3" fill="#5a2e1c"/><circle cx="115" cy="181" r="3" fill="#5a2e1c"/>
+      <path d="M89 194 q5.5 -4 11 0 t11 0" ${st}/><path d="M131 166 q5 8 0 11 q-5 -3 0 -11Z" fill="#7cc8ff"/>`;
+    case "sleepy":  return `<path d="M80 181 q5 4 10 0 M110 181 q5 4 10 0" ${st}/><ellipse cx="100" cy="193" rx="3.5" ry="3" fill="#5a2e1c"/>
+      <text x="128" y="170" font-size="14" font-weight="700" fill="#56738a">z</text><text x="138" y="160" font-size="11" font-weight="700" fill="#56738a">z</text>`;
+    case "cheer":   return `<path d="M79 183 q6 -8 12 0 M109 183 q6 -8 12 0" ${st}/>${cheeks}<path d="M90 189 q10 13 20 0Z" fill="#5a2e1c"/>`;
+    default:        return `<circle cx="85" cy="181" r="3.6" fill="#5a2e1c"/><circle cx="115" cy="181" r="3.6" fill="#5a2e1c"/>${cheeks}<path d="M92 189 q8 7 16 0" ${st}/>`;
+  }
+}
+function plantSVG(stage, mood){
+  const droop = mood === "thirsty";
+  const H = HEIGHT[stage], top = 143 - H;
+  let g = "";
+  if (stage === 0){
+    g += `<ellipse cx="100" cy="140" rx="10" ry="6.5" fill="#a5743f"/><path d="M100 134 q2 -6 6 -7" stroke="#62c467" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  } else {
+    const bend = droop ? 10 : 0;
+    g += `<path d="M100 146 C96 ${146-H*.4} ${104+bend*.5} ${146-H*.7} ${100+bend} ${top}" stroke="#4aa950" stroke-width="${stage>3?6:4}" fill="none" stroke-linecap="round"/>`;
+    LEAVES[stage].forEach(([f,s],i) => {
+      const y = 146 - H*f + (f===1?2:0);
+      g += leaf(y, s, 1, droop) + leaf(y - (i%2?4:-2), s*.95, -1, droop);
+    });
+    if (stage === 5){
+      g += `<g transform="translate(${100+bend} ${top})"><ellipse cx="0" cy="-9" rx="7" ry="10" fill="#ff8fb1"/><path d="M-7 -3 q7 6 14 0 l-2 4 h-10z" fill="#4aa950"/></g>`;
+    }
+    if (stage === 6){
+      let petals = "";
+      for (let k=0;k<6;k++) petals += `<ellipse cx="0" cy="-11" rx="6.5" ry="10" fill="${droop?'#e9a7bb':'#ff8fb1'}" transform="rotate(${k*60})"/>`;
+      g += `<g transform="translate(${100+bend} ${top-8})">${petals}<circle r="6.5" fill="#ffd34d"/></g>`;
+    }
+  }
+  return `
+    <ellipse cx="100" cy="211" rx="56" ry="4" fill="#00000014"/>
+    <ellipse cx="100" cy="142" rx="43" ry="7" fill="#6b4a2f"/>
+    <g class="sway">${g}</g>
+    <path d="M58 154 H142 L133 208 Q132 211 128 211 H72 Q68 211 67 208Z" fill="#ee8b5d"/>
+    <rect x="50" y="140" width="100" height="18" rx="7" fill="#f6a173"/>
+    ${face(mood)}`;
+}
+
+/* ================== 首頁 ================== */
+let cheerUntil = 0, lastPlantKey = "", bubbleTimer = null;
+
+function mood(){
+  if (Date.now() < cheerUntil) return "cheer";
+  if (isQuiet(nowMin())) return "sleepy";
+  if (owe() > 0) return "thirsty";
+  return "happy";
+}
+function fill(t){
+  const n = nowMin(), next = slots().find(m => m > n);
+  return t.replace("{name}", data.settings.plantName || "小芽")
+          .replace("{owe}", owe())
+          .replace("{next}", next !== undefined ? fmt(next) : "明天");
+}
+function say(text){
+  const b = $("#bubble");
+  b.textContent = fill(text);
+  b.classList.remove("pop"); void b.offsetWidth; b.classList.add("pop");
+}
+function moodLine(){
+  const m = mood();
+  if (m === "sleepy") return pick(LINES.quiet);
+  if (m === "thirsty") return pick(LINES.overdue);
+  if (data.state.count >= goal() && goal() > 0) return pick(LINES.goal);
+  if (slots().every(x => x <= nowMin())) return pick(LINES.allDone);
+  return pick(LINES.idle);
+}
+
+function render(){
+  const s = data.state, G = goal(), n = nowMin();
+  const d = new Date();
+  $("#dateChip").textContent = `${d.getMonth()+1}/${d.getDate()} 週${"日一二三四五六"[d.getDay()]}`;
+  const streak = s.streak + (G && s.count >= G ? 1 : 0);
+  $("#streakChip").innerHTML = `🔥 連續達標 <b>${streak}</b> 天`;
+
+  const next = slots().find(m => m > n);
+  $("#nextText").innerHTML = isQuiet(n) ? "勿擾中，安靜陪你 🌙"
+    : next !== undefined ? `下次提醒 <b>${fmt(next)}</b>` : "今天的提醒都結束了";
+  $("#count").innerHTML = `${s.count}<small> / ${G}</small>`;
+
+  const pct = G ? Math.min(s.count / G, 1) : 0;
+  document.documentElement.style.setProperty("--level", (6 + pct * 58) + "vh");
+
+  const st = stageOf(s.total), md = mood(), key = st + md;
+  if (key !== lastPlantKey){
+    const p = $("#plant");
+    p.innerHTML = plantSVG(st, md);
+    p.classList.toggle("thirsty", md === "thirsty");
+    lastPlantKey = key;
+  }
+  const nm = data.settings.plantName || "小芽";
+  const nextStage = STAGES[st+1];
+  if (nextStage){
+    const span = nextStage.at - STAGES[st].at, done = s.total - STAGES[st].at;
+    $("#plantInfo").innerHTML = `<b>${nm}</b>・${STAGES[st].name}　再喝 <b>${nextStage.at - s.total}</b> 次會長大`;
+    $("#plantBar").style.width = (done/span*100) + "%";
+  } else {
+    $("#plantInfo").innerHTML = `<b>${nm}</b>・開花了！累積喝了 <b>${s.total}</b> 次`;
+    $("#plantBar").style.width = "100%";
+  }
+}
+
+/* ================== 喝水 ================== */
+let undoSnap = null, toastTimer = null;
+function drink(){
+  const s = data.state;
+  undoSnap = { count:s.count, total:s.total, lastDrink:s.lastDrink };
+  const before = stageOf(s.total);
+  s.count++; s.total++; s.lastDrink = Date.now();
+  save();
+  cheerUntil = Date.now() + 2500;
+  const after = stageOf(s.total), G = goal();
+  if (after > before){
+    say(LINES.stageUp.replace("{stage}", STAGES[after].name)); rain("🌱");
+  } else if (s.count === G){
+    say(pick(LINES.goal)); rain("💧");
+  } else if (s.count > G){
+    say(pick(LINES.extra));
+  } else {
+    say(pick(LINES.drank));
+  }
+  render();
+  setTimeout(render, 2600);
+  showToast(`已記錄第 ${s.count} 次`);
+}
+function undo(){
+  if (!undoSnap) return;
+  Object.assign(data.state, undoSnap); undoSnap = null;
+  save(); cheerUntil = 0; render(); hideToast();
+  say("好，當我沒看到。但你還是要喝喔。");
+}
+function showToast(t){
+  $("#toastText").textContent = t;
+  $("#toast").classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, 4000);
+}
+function hideToast(){ $("#toast").classList.remove("show"); undoSnap = null; }
+function rain(ch){
+  for (let i=0;i<18;i++){
+    const e = document.createElement("span");
+    e.className = "drop"; e.textContent = ch;
+    e.style.left = Math.random()*100 + "vw";
+    e.style.animationDuration = (1.6 + Math.random()*1.4) + "s";
+    e.style.animationDelay = Math.random()*.6 + "s";
+    document.body.appendChild(e);
+    setTimeout(() => e.remove(), 3800);
+  }
+}
+
+/* ================== 提醒 ================== */
+let swReg = null;
+function tick(){
+  rollover();
+  const n = nowMin();
+  const past = slots().filter(m => m <= n);
+  const last = past.length ? past[past.length-1] : -1;
+  if (last !== -1 && last !== data.state.lastFired){
+    data.state.lastFired = last; save();
+    const recent = Date.now() - data.state.lastDrink < 15*60*1000;   // 剛喝過就不吵
+    if (n - last <= 5 && !recent) fireReminder();
+  }
+  render();
+}
+function fireReminder(){
+  const line = fill(owe() > 1 ? pick(LINES.overdue) : pick(LINES.remind));
+  say(line);
+  const p = $("#plant"); p.classList.remove("ring"); void p.offsetWidth; p.classList.add("ring");
+  $("#bannerText").textContent = line;
+  $("#banner").classList.add("show");
+  setTimeout(() => $("#banner").classList.remove("show"), 6000);
+  if ("Notification" in window && Notification.permission === "granted" && swReg){
+    swReg.showNotification("喝水啦 💧", { body:line, icon:"icon-180.png", tag:"drink", renotify:true }).catch(()=>{});
+  }
+}
+
+/* ================== 設定頁 ================== */
+function openSettings(){ fillSettings(); $("#settings").classList.add("open"); }
+function closeSettings(){ $("#settings").classList.remove("open"); lastPlantKey = ""; render(); }
+
+function fillSettings(){
+  const s = data.settings;
+  document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === s.mode));
+  $("#intervalBox").style.display = s.mode === "interval" ? "" : "none";
+  $("#customBox").style.display = s.mode === "custom" ? "" : "none";
+  $("#interval").value = String(s.interval);
+  $("#startAt").value = s.startAt;
+  $("#quietOn").checked = s.quietOn;
+  $("#quietStart").value = s.quietStart;
+  $("#quietEnd").value = s.quietEnd;
+  $("#quietRow1").style.opacity = $("#quietRow2").style.opacity = s.quietOn ? 1 : .4;
+  $("#plantName").value = s.plantName;
+  renderTimes(); renderPreview(); renderNotif();
+}
+function renderTimes(){
+  const box = $("#timesList");
+  box.innerHTML = "";
+  data.settings.times.forEach((t,i) => {
+    const c = document.createElement("div");
+    c.className = "tchip";
+    c.innerHTML = `<input type="time" value="${t}" aria-label="提醒時間 ${i+1}"><button aria-label="刪除">×</button>`;
+    c.querySelector("input").addEventListener("change", e => {
+      if (!e.target.value) return;
+      data.settings.times[i] = e.target.value; data.settings.times.sort(); save(); renderTimes(); renderPreview();
+    });
+    c.querySelector("button").addEventListener("click", () => {
+      data.settings.times.splice(i,1); save(); renderTimes(); renderPreview();
+    });
+    box.appendChild(c);
+  });
+  const add = document.createElement("button");
+  add.className = "addt"; add.textContent = "＋ 新增時間";
+  add.addEventListener("click", () => {
+    const last = data.settings.times.length ? toMin(data.settings.times.at(-1)) : 480;
+    data.settings.times.push(fmt(Math.min(last + 120, 23*60))); save(); renderTimes(); renderPreview();
+  });
+  box.appendChild(add);
+}
+function renderPreview(){
+  const s = data.settings, list = slots();
+  let html = list.length
+    ? `每天提醒 <b>${list.length}</b> 次，也就是每日目標：<br>${list.map(fmt).join("、")}`
+    : `<span class="warn">目前沒有任何提醒時間，換個設定試試看。</span>`;
+  if (s.mode === "custom"){
+    const blocked = s.times.filter(t => isQuiet(toMin(t)));
+    if (blocked.length) html += `<br><span class="warn">${blocked.join("、")} 落在勿擾時段，不會提醒。</span>`;
+  }
+  $("#preview").innerHTML = html;
+}
+function renderNotif(){
+  const el = $("#notifStatus"), btn = $("#notifBtn");
+  if (!("Notification" in window)){
+    el.textContent = "請先「加入主畫面」，再從主畫面打開"; el.className = "status no"; btn.style.display = "none"; return;
+  }
+  const p = Notification.permission;
+  el.textContent = p === "granted" ? "已開啟" : p === "denied" ? "被拒絕了，請到 iPhone 設定開啟" : "尚未開啟";
+  el.className = "status " + (p === "granted" ? "ok" : "no");
+  btn.style.display = p === "default" ? "" : "none";
+}
+function set(k, v){ data.settings[k] = v; save(); fillSettings(); }
+
+/* ---------- 行事曆 (.ics) ---------- */
+function buildICS(){
+  const list = slots(), d = new Date();
+  const ymd = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+  const stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
+  const esc = t => t.replace(/[\\;,]/g, m => "\\" + m);
+  const pool = [...LINES.remind].sort(() => Math.random() - .5);
+  const out = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//hoshuila//drink//ZH","CALSCALE:GREGORIAN","X-WR-CALNAME:喝水啦"];
+  list.forEach((m,i) => {
+    const line = fill(pool[i % pool.length]);
+    out.push("BEGIN:VEVENT",
+      `UID:hoshuila-${ymd}-${fmt(m).replace(":","")}-${Date.now()}@drink`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART:${ymd}T${pad(Math.floor(m/60))}${pad(m%60)}00`,
+      "DURATION:PT5M", "RRULE:FREQ=DAILY",
+      `SUMMARY:💧 ${esc(line)}`,
+      "DESCRIPTION:打開「喝水啦」按「我喝了」讓植物長大",
+      "BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${esc(line)}`,"TRIGGER:PT0M","END:VALARM",
+      "END:VEVENT");
+  });
+  out.push("END:VCALENDAR");
+  return out.join("\r\n");
+}
+function exportICS(){
+  if (!slots().length){ alert("目前沒有提醒時間喔。"); return; }
+  const blob = new Blob([buildICS()], { type:"text/calendar;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "喝水提醒.ics";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/* ================== 綁定事件 ================== */
+$("#drinkBtn").addEventListener("click", drink);
+$("#undoBtn").addEventListener("click", undo);
+$("#plant").addEventListener("click", () => {
+  const p = $("#plant"); p.classList.remove("bounce"); void p.offsetWidth; p.classList.add("bounce");
+  say(moodLine());
+});
+$("#banner").addEventListener("click", () => $("#banner").classList.remove("show"));
+$("#openSettings").addEventListener("click", openSettings);
+$("#closeSettings").addEventListener("click", closeSettings);
+document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => set("mode", b.dataset.mode)));
+$("#interval").addEventListener("change", e => set("interval", Number(e.target.value)));
+$("#startAt").addEventListener("change", e => e.target.value && set("startAt", e.target.value));
+$("#quietOn").addEventListener("change", e => set("quietOn", e.target.checked));
+$("#quietStart").addEventListener("change", e => e.target.value && set("quietStart", e.target.value));
+$("#quietEnd").addEventListener("change", e => e.target.value && set("quietEnd", e.target.value));
+$("#plantName").addEventListener("input", e => { data.settings.plantName = e.target.value.trim() || "小芽"; save(); });
+$("#notifBtn").addEventListener("click", async () => {
+  try { await Notification.requestPermission(); } catch(e){}
+  renderNotif();
+});
+$("#icsBtn").addEventListener("click", exportICS);
+$("#resetToday").addEventListener("click", () => {
+  if (!confirm("把今天的次數歸零？")) return;
+  data.state.count = 0; save(); render(); closeSettings(); say("好，今天重新開始，這次別偷懶。");
+});
+$("#resetAll").addEventListener("click", () => {
+  if (!confirm("全部重來會清掉植物成長和連續天數，確定嗎？")) return;
+  data = { settings:{...DEFAULTS}, state:freshState() }; save(); closeSettings();
+  say("我又變回種子了…這次要好好照顧我喔。");
+});
+document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
+
+/* ================== 啟動 ================== */
+if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
+  navigator.serviceWorker.register("sw.js").then(r => { swReg = r; }).catch(()=>{});
+}
+rollover();
+data.state.lastFired = Math.max(data.state.lastFired, -1);
+render();
+say(data.state.count === 0 && nowMin() < 11*60 && !isQuiet(nowMin()) ? pick(LINES.morning) : moodLine());
+tick();
+setInterval(tick, 20000);
+</script>
+</body>
+</html>

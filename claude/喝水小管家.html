@@ -1,0 +1,844 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>喝水小管家</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* 布局：单栏手机优先。顶部有一枚仿“动态岛”的药丸提醒，其下依次是水杯、按钮、小植物、七天记录。 */
+:root {
+  --bg1: #e4f8f5;
+  --bg2: #d0ecfa;
+  --card: #f6fcfc;
+  --card-border: #ffffff;
+  --ink: #0f3a47;
+  --ink-soft: #4b7380;
+  --line: rgba(15, 58, 71, 0.14);
+  --teal: #13b5a4;
+  --sky: #2aa7e3;
+  --water-a: #55d3ee;
+  --water-b: #27b1d8;
+  --glass: rgba(255, 255, 255, 0.55);
+  --glass-edge: rgba(15, 58, 71, 0.55);
+  --coral: #e5694a;
+  --shadow: 0 10px 30px rgba(20, 110, 130, 0.14);
+  --pill-bg: #0e2a33;
+  --pill-fg: #e8fafb;
+  --on-accent: #ffffff;
+  --toast-bg: #0f3a47;
+  --toast-fg: #e4f8f5;
+  --font: ui-rounded, "SF Pro Rounded", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg1: #0a232b; --bg2: #0d3342; --card: #15303a; --card-border: rgba(255, 255, 255, 0.1);
+    --ink: #e3f6f8; --ink-soft: #8fb7c0; --line: rgba(227, 246, 248, 0.16);
+    --glass: rgba(255, 255, 255, 0.08); --glass-edge: rgba(227, 246, 248, 0.6);
+    --coral: #f4896b; --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --pill-bg: #04141a; --toast-bg: #e3f6f8; --toast-fg: #0a232b;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg1: #0a232b; --bg2: #0d3342; --card: #15303a; --card-border: rgba(255, 255, 255, 0.1);
+  --ink: #e3f6f8; --ink-soft: #8fb7c0; --line: rgba(227, 246, 248, 0.16);
+  --glass: rgba(255, 255, 255, 0.08); --glass-edge: rgba(227, 246, 248, 0.6);
+  --coral: #f4896b; --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --pill-bg: #04141a; --toast-bg: #e3f6f8; --toast-fg: #0a232b;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0;
+  background-color: var(--bg2);
+  background-image: linear-gradient(180deg, var(--bg1), var(--bg2));
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+}
+#app {
+  max-width: 480px;
+  margin: 0 auto;
+  padding-block: 14px 32px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.top h1 { margin: 0; font-size: 24px; letter-spacing: 0.02em; }
+.sub { margin: 2px 0 0; color: var(--ink-soft); font-size: 14px; }
+.icon-btn {
+  width: 42px; height: 42px; flex: none; border-radius: 14px 14px 14px 6px; border: 1px solid var(--card-border);
+  background: var(--card); color: var(--ink); display: grid; place-items: center; font: inherit; cursor: pointer; box-shadow: var(--shadow);
+}
+.icon-btn:active { transform: scale(0.95); }
+:focus-visible { outline: 3px solid var(--sky); outline-offset: 2px; }
+
+/* 状态条 */
+.runstate {
+  display: flex; align-items: flex-start; gap: 10px; background: var(--card); border: 1px solid var(--card-border);
+  border-radius: 18px 18px 18px 6px; padding: 12px 14px; margin-bottom: 14px; box-shadow: var(--shadow); font-size: 14px;
+}
+.runstate .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--teal); animation: pulse 2s ease-in-out infinite; }
+.runstate.off .dot { background: var(--ink-soft); animation: none; }
+.runstate strong { display: block; font-size: 15px; }
+.runstate span { color: var(--ink-soft); }
+@keyframes pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(19, 181, 164, 0.5); } 50% { box-shadow: 0 0 0 6px rgba(19, 181, 164, 0); } }
+
+/* 主视觉 */
+.hero {
+  background: var(--card); border: 1px solid var(--card-border); border-radius: 36px 36px 36px 12px;
+  padding: 18px 16px 20px; box-shadow: var(--shadow); text-align: center;
+}
+.glass { width: min(62vw, 250px); max-width: 100%; height: auto; display: block; margin: 0 auto; overflow: visible; }
+.glass .shadow { fill: var(--line); }
+.glass-body { fill: var(--glass); }
+.glass-edge { fill: none; stroke: var(--glass-edge); stroke-width: 3.5; stroke-linejoin: round; }
+.glass .shine { stroke: rgba(255, 255, 255, 0.75); stroke-width: 5; stroke-linecap: round; fill: none; }
+.water-level { transition: transform 1.2s cubic-bezier(0.3, 0.8, 0.3, 1); transform: translateY(240px); }
+.wave { transform-box: fill-box; }
+.wave-back { fill: var(--water-a); opacity: 0.55; animation: wave-l 4.6s linear infinite; }
+.wave-front { fill: url(#waterGrad); animation: wave-r 3.2s linear infinite; }
+.bubble { fill: rgba(255, 255, 255, 0.65); animation: rise 4s ease-in infinite; }
+.bubble.b2 { animation-delay: 1.3s; animation-duration: 5s; }
+.bubble.b3 { animation-delay: 2.4s; animation-duration: 3.6s; }
+@keyframes wave-l { from { transform: translateX(0); } to { transform: translateX(-110px); } }
+@keyframes wave-r { from { transform: translateX(-110px); } to { transform: translateX(0); } }
+@keyframes rise { 0% { transform: translateY(70px); opacity: 0; } 20% { opacity: 1; } 100% { transform: translateY(-20px); opacity: 0; } }
+.face .eye { fill: #0f3a47; }
+.face .eye-shine { fill: #fff; }
+.face .blush { fill: #ff9bb0; opacity: 0.85; }
+.face .mouth { fill: none; stroke: #0f3a47; stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; }
+.face .mouth.open { fill: #c2415d; }
+.face { animation: blink 5s infinite; transform-origin: 110px 116px; }
+@keyframes blink { 0%, 94%, 100% { transform: scaleY(1); } 97% { transform: scaleY(0.2); } }
+
+.count-wrap { margin-top: 10px; }
+.count { font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.count #count { font-size: 56px; letter-spacing: -0.02em; }
+.count .goal { font-size: 20px; color: var(--ink-soft); margin-left: 6px; font-weight: 600; }
+.hint { margin: 8px 0 0; font-size: 16px; }
+.next { margin: 4px 0 0; font-size: 14px; color: var(--ink-soft); }
+
+.actions { text-align: center; margin: 18px 0 6px; }
+.drink-btn {
+  width: 100%; border: 0; border-radius: 999px; padding: 18px 20px; font: inherit; font-size: 20px; font-weight: 800; color: var(--on-accent); cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(135deg, var(--teal), var(--sky)); box-shadow: 0 10px 22px rgba(25, 150, 190, 0.35); transition: transform 0.12s ease;
+}
+.drink-btn:active { transform: scale(0.97); }
+.link-btn { margin-top: 10px; border: 0; background: none; color: var(--ink-soft); font: inherit; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; padding: 6px 10px; }
+.link-btn:disabled { opacity: 0.4; cursor: default; }
+
+/* 植物 */
+.plant-card {
+  display: flex; align-items: center; gap: 14px; margin-top: 14px; background: var(--card); border: 1px solid var(--card-border);
+  border-radius: 12px 30px 30px 30px; padding: 14px 18px 14px 12px; box-shadow: var(--shadow);
+}
+.plant { flex: none; width: 112px; }
+.plant svg { width: 100%; max-width: 100%; height: auto; display: block; overflow: visible; }
+.plant svg.pop { animation: pop 0.7s cubic-bezier(0.3, 1.6, 0.5, 1); }
+.plant .sway { transform-origin: 80px 121px; animation: sway 4.5s ease-in-out infinite alternate; }
+@keyframes pop { 0% { transform: scale(0.85); } 100% { transform: scale(1); } }
+@keyframes sway { from { transform: rotate(-2.5deg); } to { transform: rotate(2.5deg); } }
+.plant-text { min-width: 0; }
+.plant-text h2 { margin: 0 0 4px; font-size: 18px; }
+.plant-text p { margin: 0; color: var(--ink-soft); font-size: 14px; }
+.plant-text .streak { margin-top: 8px; color: var(--ink); font-weight: 700; }
+
+/* 最近七天 */
+.week { margin-top: 14px; padding: 4px 4px 0; }
+.week h3 { margin: 0 0 8px; font-size: 14px; color: var(--ink-soft); font-weight: 600; }
+.week-row { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.day { text-align: center; font-size: 12px; color: var(--ink-soft); }
+.day .cup { position: relative; height: 54px; margin-bottom: 4px; border-radius: 8px 8px 14px 14px; overflow: hidden; background: var(--glass); border: 2px solid var(--line); }
+.day .cup i { position: absolute; left: 0; right: 0; bottom: 0; background: linear-gradient(180deg, var(--water-a), var(--water-b)); transition: height 0.6s ease; }
+.day.full .cup { border-color: var(--teal); }
+.day.today { color: var(--ink); font-weight: 800; }
+.day.today .cup { border-color: var(--sky); }
+
+/* 顶部药丸提醒（仿动态岛） */
+.island {
+  position: fixed; z-index: 60; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 8px);
+  width: min(calc(100vw - 32px), 420px); transform: translate(-50%, -160%); transition: transform 0.55s cubic-bezier(0.2, 1.25, 0.3, 1);
+  background: var(--pill-bg); color: var(--pill-fg); border-radius: 30px; padding: 12px 14px; box-shadow: 0 14px 34px rgba(0, 0, 0, 0.35);
+  display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px;
+}
+.island.show { transform: translate(-50%, 0); }
+.island .drop { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: linear-gradient(135deg, var(--teal), var(--sky)); }
+.island .msg { flex: 1 1 160px; min-width: 0; }
+.island .msg b { display: block; font-size: 14px; }
+.island .msg span { font-size: 14px; opacity: 0.85; display: block; overflow-wrap: anywhere; }
+.island .btns { display: flex; gap: 8px; margin-left: auto; }
+.island button { font: inherit; font-size: 14px; font-weight: 700; border: 0; border-radius: 999px; padding: 9px 16px; cursor: pointer; }
+.island .yes { background: linear-gradient(135deg, var(--teal), var(--sky)); color: var(--on-accent); }
+.island .later { background: rgba(255, 255, 255, 0.14); color: var(--pill-fg); }
+
+.toast {
+  position: fixed; z-index: 50; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 28px); transform: translate(-50%, 20px);
+  background: var(--toast-bg); color: var(--toast-fg); padding: 12px 18px; border-radius: 999px; font-size: 15px; font-weight: 600;
+  opacity: 0; pointer-events: none; transition: opacity 0.25s, transform 0.25s; max-width: calc(100vw - 32px); text-align: center;
+}
+.toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+/* 设置面板 */
+.sheet { position: fixed; inset: 0; z-index: 40; }
+.sheet-backdrop { position: absolute; inset: 0; background: rgba(5, 30, 38, 0.45); animation: fade 0.2s ease; }
+.sheet-panel {
+  position: absolute; left: 0; right: 0; bottom: 0; max-width: 520px; margin: 0 auto; max-height: 92%; overflow-y: auto;
+  background: var(--bg1); border-radius: 28px 28px 0 0; padding-top: 18px;
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 28px);
+  padding-left: max(18px, env(safe-area-inset-left, 0px)); padding-right: max(18px, env(safe-area-inset-right, 0px));
+  animation: slide 0.28s cubic-bezier(0.2, 0.9, 0.3, 1); box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.25);
+}
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide { from { transform: translateY(40px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.sheet-head h2 { margin: 0; font-size: 20px; }
+.group { padding: 14px 0; border-top: 1px solid var(--line); }
+.group h3 { margin: 0 0 10px; font-size: 14px; color: var(--ink-soft); font-weight: 700; }
+.row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.row > span { min-width: 0; }
+.row.two { justify-content: flex-start; flex-wrap: wrap; gap: 12px 18px; }
+.row.two label { display: flex; align-items: center; gap: 8px; }
+.note { margin: 6px 0 0; font-size: 13px; color: var(--ink-soft); }
+.seg { display: grid; grid-template-columns: 1fr 1fr; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 4px; gap: 4px; margin-bottom: 8px; }
+.seg button { border: 0; background: none; font: inherit; font-weight: 700; color: var(--ink-soft); padding: 10px 6px; border-radius: 10px; cursor: pointer; }
+.seg button[aria-selected="true"] { background: linear-gradient(135deg, var(--teal), var(--sky)); color: var(--on-accent); }
+select, input[type="time"] { font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 9px 12px; min-height: 42px; }
+.times-list { list-style: none; margin: 0 0 8px; padding: 0; display: grid; gap: 8px; }
+.times-list li { display: flex; align-items: center; gap: 10px; }
+.times-list .del { border: 0; background: none; color: var(--coral); font-size: 20px; cursor: pointer; padding: 4px 10px; }
+.ghost-btn { border: 1.5px dashed var(--teal); background: none; color: var(--teal); font: inherit; font-weight: 700; padding: 11px 16px; border-radius: 14px; cursor: pointer; width: 100%; }
+.stepper { display: flex; align-items: center; gap: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+.stepper button { width: 38px; height: 38px; border-radius: 50%; border: 0; background: linear-gradient(135deg, var(--teal), var(--sky)); color: var(--on-accent); font-size: 20px; font-weight: 700; cursor: pointer; }
+.stepper output { min-width: 40px; text-align: center; font-weight: 800; font-size: 18px; }
+.switch-row { cursor: pointer; }
+.switch { appearance: none; -webkit-appearance: none; width: 52px; height: 30px; border-radius: 999px; background: var(--line); position: relative; transition: background 0.2s; flex: none; cursor: pointer; margin: 0; }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25); transition: transform 0.2s; }
+.switch:checked { background: var(--teal); }
+.switch:checked::after { transform: translateX(22px); }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 5px 10px; font-size: 14px; font-variant-numeric: tabular-nums; }
+.chip.empty { color: var(--ink-soft); border-style: dashed; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition-duration: 0.01ms !important; }
+}
+</style>
+
+<main id="app">
+  <header class="top">
+    <div>
+      <h1>喝水小管家</h1>
+      <p id="dateLabel" class="sub"></p>
+    </div>
+    <button id="openSettings" class="icon-btn" type="button" aria-label="打开设置">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="3.2"/>
+        <path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3h.1a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9v.1a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>
+      </svg>
+    </button>
+  </header>
+
+  <section id="runstate" class="runstate" aria-live="polite">
+    <i class="dot"></i>
+    <div><strong id="runTitle">提醒运行中</strong><span id="runSub">请保持本页开启，关闭或锁屏后不会响。</span></div>
+  </section>
+
+  <section class="hero" aria-label="今日喝水进度">
+    <svg id="glass" class="glass" viewBox="0 0 220 250" role="img" aria-label="水杯">
+      <defs>
+        <clipPath id="glassClip"><path d="M46 28 H174 L160 218 Q159 232 145 232 H75 Q61 232 60 218 Z"/></clipPath>
+        <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#55d3ee"/>
+          <stop offset="1" stop-color="#27b1d8"/>
+        </linearGradient>
+      </defs>
+      <ellipse cx="110" cy="240" rx="62" ry="6" class="shadow"/>
+      <path d="M46 28 H174 L160 218 Q159 232 145 232 H75 Q61 232 60 218 Z" class="glass-body"/>
+      <g clip-path="url(#glassClip)">
+        <g id="waterLevel" class="water-level">
+          <path class="wave wave-back" d="M0 0 q27.5 -12 55 0 t55 0 t55 0 t55 0 t55 0 t55 0 t55 0 t55 0 V280 H0 Z"/>
+          <path class="wave wave-front" d="M0 0 q27.5 -12 55 0 t55 0 t55 0 t55 0 t55 0 t55 0 t55 0 t55 0 V280 H0 Z"/>
+          <circle class="bubble b1" cx="86" cy="60" r="4"/>
+          <circle class="bubble b2" cx="124" cy="80" r="3"/>
+          <circle class="bubble b3" cx="104" cy="40" r="2.5"/>
+        </g>
+      </g>
+      <g class="face">
+        <circle cx="88" cy="116" r="6" class="eye"/>
+        <circle cx="132" cy="116" r="6" class="eye"/>
+        <circle cx="89.5" cy="114" r="1.8" class="eye-shine"/>
+        <circle cx="133.5" cy="114" r="1.8" class="eye-shine"/>
+        <ellipse cx="74" cy="134" rx="9" ry="5.5" class="blush"/>
+        <ellipse cx="146" cy="134" rx="9" ry="5.5" class="blush"/>
+        <path id="mouth" class="mouth" d="M100 138 q10 8 20 0"/>
+      </g>
+      <path d="M58 44 L66 170" class="shine"/>
+      <path d="M46 28 H174 L160 218 Q159 232 145 232 H75 Q61 232 60 218 Z" class="glass-edge"/>
+    </svg>
+    <div class="count-wrap">
+      <div class="count"><span id="count">0</span><span id="goalText" class="goal">/ 8 次</span></div>
+      <p id="hint" class="hint"></p>
+      <p id="nextLine" class="next"></p>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button id="drinkBtn" class="drink-btn" type="button">
+      <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M12 2.5c3.6 4.4 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 2.4-6.6 6-11z" fill="currentColor"/></svg>
+      <span>我喝了</span>
+    </button>
+    <button id="undoBtn" class="link-btn" type="button">点错了？撤销一次</button>
+  </div>
+
+  <section class="plant-card" aria-label="小植物">
+    <div id="plant" class="plant"></div>
+    <div class="plant-text">
+      <h2 id="plantName">沉睡的种子</h2>
+      <p id="plantDesc"></p>
+      <p id="streak" class="streak"></p>
+    </div>
+  </section>
+
+  <section class="week" aria-label="最近七天">
+    <h3>最近 7 天</h3>
+    <div id="weekRow" class="week-row"></div>
+  </section>
+</main>
+
+<div id="island" class="island" role="alert" aria-live="assertive">
+  <div class="drop"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 2.5c3.6 4.4 6 7.6 6 11a6 6 0 0 1-12 0c0-3.4 2.4-6.6 6-11z" fill="#fff"/></svg></div>
+  <div class="msg"><b id="islandTitle">该喝水啦</b><span id="islandBody"></span></div>
+  <div class="btns">
+    <button id="islandLater" class="later" type="button">稍后</button>
+    <button id="islandYes" class="yes" type="button">我喝了</button>
+  </div>
+</div>
+
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<div id="sheet" class="sheet" hidden>
+  <div class="sheet-backdrop" data-close></div>
+  <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-head">
+      <h2 id="sheetTitle">设置</h2>
+      <button class="icon-btn" type="button" data-close aria-label="关闭设置">✕</button>
+    </div>
+
+    <div class="group">
+      <h3>提醒方式</h3>
+      <div class="seg" role="tablist">
+        <button type="button" role="tab" id="modeInterval" data-mode="interval">固定间隔</button>
+        <button type="button" role="tab" id="modeTimes" data-mode="times">自定时间点</button>
+      </div>
+      <div id="intervalRow" class="row">
+        <label for="intervalSel">每隔</label>
+        <select id="intervalSel">
+          <option value="30">30 分钟</option>
+          <option value="45">45 分钟</option>
+          <option value="60">1 小时</option>
+          <option value="90">1.5 小时</option>
+          <option value="120">2 小时</option>
+          <option value="180">3 小时</option>
+          <option value="240">4 小时</option>
+        </select>
+      </div>
+      <div id="timesBox" hidden>
+        <ul id="timesList" class="times-list"></ul>
+        <button type="button" id="addTime" class="ghost-btn">＋ 添加时间</button>
+      </div>
+    </div>
+
+    <div class="group">
+      <h3>勿扰时段</h3>
+      <label class="row switch-row" for="quietOn">
+        <span>开启勿扰（这段时间不提醒）</span>
+        <input type="checkbox" id="quietOn" class="switch">
+      </label>
+      <div id="quietRow" class="row two">
+        <label for="quietStart">从 <input type="time" id="quietStart"></label>
+        <label for="quietEnd">到 <input type="time" id="quietEnd"></label>
+      </div>
+      <p class="note">固定间隔会从勿扰结束的时间开始算起。</p>
+    </div>
+
+    <div class="group">
+      <h3>每日目标</h3>
+      <div class="row">
+        <span>每天喝水次数</span>
+        <div class="stepper">
+          <button type="button" id="goalMinus" aria-label="减少">−</button>
+          <output id="goalVal">8</output>
+          <button type="button" id="goalPlus" aria-label="增加">＋</button>
+        </div>
+      </div>
+      <label class="row switch-row" for="stopAfterGoal">
+        <span>达标后不再提醒</span>
+        <input type="checkbox" id="stopAfterGoal" class="switch">
+      </label>
+      <label class="row switch-row" for="paused">
+        <span>暂停所有提醒</span>
+        <input type="checkbox" id="paused" class="switch">
+      </label>
+    </div>
+
+    <div class="group">
+      <h3>提醒效果</h3>
+      <label class="row switch-row" for="soundOn">
+        <span>提示音</span>
+        <input type="checkbox" id="soundOn" class="switch">
+      </label>
+      <label class="row switch-row" for="keepAwake">
+        <span>保持屏幕常亮（更耗电）</span>
+        <input type="checkbox" id="keepAwake" class="switch">
+      </label>
+      <p class="note">本页只在开着、屏幕亮着时才会提醒。锁屏或切到别的 App 后，浏览器会暂停它。</p>
+      <button type="button" id="previewBtn" class="ghost-btn">预览一次提醒</button>
+    </div>
+
+    <div class="group">
+      <h3>今天的提醒时间表</h3>
+      <div id="scheduleChips" class="chips"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+
+  /* ---------- 时间与排程 ---------- */
+  const TZ = (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Taipei'; } catch { return 'Asia/Taipei'; } })();
+  const DEFAULTS = {
+    mode: 'interval', intervalMin: 60, times: ['09:00', '11:00', '14:00', '16:00', '18:00'],
+    quietEnabled: true, quietStart: '22:00', quietEnd: '08:00',
+    goal: 8, stopAfterGoal: true, paused: false, sound: true, keepAwake: false,
+  };
+
+  function toMin(t) {
+    const m = /^(\d{1,2}):(\d{2})$/.exec(String(t || ''));
+    if (!m) return null;
+    const h = +m[1], mi = +m[2];
+    return h > 23 || mi > 59 ? null : h * 60 + mi;
+  }
+  const fmt = (min) => { const m = ((min % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); };
+  const clampInt = (v, lo, hi, d) => { const n = Math.round(Number(v)); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : d; };
+
+  function normSettings(input) {
+    const s = { ...DEFAULTS, ...(input && typeof input === 'object' ? input : {}) };
+    const seen = new Set();
+    for (const t of Array.isArray(s.times) ? s.times : []) { const m = toMin(t); if (m !== null) seen.add(m); if (seen.size >= 24) break; }
+    return {
+      mode: s.mode === 'times' ? 'times' : 'interval',
+      intervalMin: clampInt(s.intervalMin, 15, 240, 60),
+      times: [...seen].sort((a, b) => a - b).map(fmt),
+      quietEnabled: Boolean(s.quietEnabled),
+      quietStart: toMin(s.quietStart) === null ? '22:00' : fmt(toMin(s.quietStart)),
+      quietEnd: toMin(s.quietEnd) === null ? '08:00' : fmt(toMin(s.quietEnd)),
+      goal: clampInt(s.goal, 1, 20, 8),
+      stopAfterGoal: Boolean(s.stopAfterGoal),
+      paused: Boolean(s.paused),
+      sound: s.sound !== false,
+      keepAwake: Boolean(s.keepAwake),
+    };
+  }
+
+  const inQuiet = (m, qs, qe) => (qs === qe ? false : qs < qe ? m >= qs && m < qe : m >= qs || m < qe);
+
+  function buildSchedule(settings) {
+    const s = normSettings(settings);
+    const qs = toMin(s.quietStart), qe = toMin(s.quietEnd);
+    const quiet = (m) => s.quietEnabled && inQuiet(m, qs, qe);
+    const slots = new Set();
+    if (s.mode === 'times') {
+      for (const t of s.times) { const m = toMin(t); if (!quiet(m)) slots.add(m); }
+    } else {
+      const anchor = s.quietEnabled ? qe : 0;
+      for (let k = 0; k * s.intervalMin < 1440; k++) { const m = (anchor + k * s.intervalMin) % 1440; if (!quiet(m)) slots.add(m); }
+    }
+    return [...slots].sort((a, b) => a - b);
+  }
+
+  const dtf = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+  function localParts(date = new Date()) {
+    const p = {};
+    for (const x of dtf.formatToParts(date)) p[x.type] = x.value;
+    return { date: `${p.year}-${p.month}-${p.day}`, min: Number(p.hour) * 60 + Number(p.minute) };
+  }
+  function addDays(dateStr, n) {
+    const d = new Date(dateStr + 'T12:00:00Z');
+    d.setUTCDate(d.getUTCDate() + n);
+    return d.toISOString().slice(0, 10);
+  }
+
+  /* ---------- 文案 ---------- */
+  const TITLES = ['该喝水啦', '喝水时间到', '小水滴在敲门', '水杯在喊你', '喂，喝水！'];
+  const ZERO = ['喂，今天到现在一口水都没喝，你是仙人掌吗？', '你的小植物都比你会喝水，快去倒一杯！', '身体说它缺水了。你说没听见？别装了，喝！', '再不喝水，我就要在屏幕上跳舞了。', '先喝一口水再说话，谢谢。'];
+  const BEHIND = ['才喝了 {done} 杯，目标 {goal} 杯，你是在跟我讨价还价吗？', '进度 {done}/{goal}，小植物已经开始叹气了。', '你再拖，我就把提示音调大。（开玩笑的，快喝）', '水杯：我就在你手边，你好意思不拿起我？', '{done}/{goal}……这个进度，连仙人掌都想摇头。'];
+  const MID = ['进度 {done}/{goal}，还行，但别得意，继续喝！', '过半了！但小植物说它还想要更多。', '再来一杯，你就是今天的喝水冠军（自封的）。', '又到点了，这次不许假装没看见。', '{done}/{goal}，快到了，别在终点前偷懒。'];
+  const NEAR = ['只差最后一杯了，临门一脚还要我推你吗？', '{goal} 杯目标只剩一杯，别让小植物功亏一篑！'];
+  const DONE = ['今天的目标已经达成，小植物给你比心。想继续喝也没人拦你。', '已经完成目标了，今天你很能喝嘛。'];
+  const CHEERS = ['咕咚！记上了', '水分 +1，小植物很满意', '干得漂亮，继续保持', '这才对嘛', '身体说谢谢你'];
+  const pick = (a) => a[Math.floor(Math.random() * a.length)];
+  function pickMessage(done, goal) {
+    const pool = done >= goal ? DONE : done === 0 ? ZERO : done === goal - 1 && goal > 2 ? NEAR : done * 2 >= goal ? MID : BEHIND;
+    return { title: pick(TITLES), body: pick(pool).replace(/\{done\}/g, done).replace(/\{goal\}/g, goal) };
+  }
+
+  /* ---------- 状态与保存 ---------- */
+  const LS_KEY = 'water-reminder-v1';
+  let S = normState(null);
+
+  function normState(x) {
+    const o = x && typeof x === 'object' ? x : {};
+    const drinks = {};
+    const cutoff = addDays(localParts().date, -60);
+    for (const [d, n] of Object.entries(o.drinks && typeof o.drinks === 'object' ? o.drinks : {})) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d) && d >= cutoff && Number(n) > 0) drinks[d] = Math.min(99, Math.round(Number(n)));
+    }
+    const sent = o.sent && typeof o.sent === 'object' && Array.isArray(o.sent.slots) ? { date: String(o.sent.date || ''), slots: o.sent.slots.filter((n) => Number.isInteger(n)) } : { date: '', slots: [] };
+    return { settings: normSettings(o.settings), drinks, sent, updatedAt: Number(o.updatedAt) || 0 };
+  }
+
+  function lsRead() { try { const r = localStorage.getItem(LS_KEY); return r ? JSON.parse(r) : null; } catch { return null; } }
+  function lsWrite() { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch { /* 不可用时忽略 */ } }
+
+  // 登录并有写入权限时，把数据同步到你自己的私有空间，换设备也能找回
+  let dbDoc = null, dbBusy = false, dbDirty = false, dbTimer = null;
+  function save() { S.updatedAt = Date.now(); lsWrite(); queueDb(); }
+  function queueDb() { if (!dbDoc) return; dbDirty = true; clearTimeout(dbTimer); dbTimer = setTimeout(flushDb, 1000); }
+  async function flushDb() {
+    if (!dbDoc || dbBusy || !dbDirty) return;
+    dbBusy = true; dbDirty = false;
+    try { await dbDoc.set(JSON.parse(JSON.stringify(S))); }
+    catch { dbDoc = null; /* 没有写入权限或服务不可用：本次不再同步，本机仍会保存 */ }
+    finally { dbBusy = false; if (dbDirty && dbDoc) queueDb(); }
+  }
+  async function initCloud() {
+    try {
+      const c = window.claude;
+      if (!c || !c.use) return;
+      const [db, user] = await Promise.all([c.use('db'), c.use('user')]);
+      if (!db || !user) return;
+      const uid = await user.id();
+      if (!uid) return;
+      const ref = db.doc('data/users/' + uid + '/state');
+      const snap = await ref.get();
+      const remote = snap.exists ? snap.data() : null;
+      if (remote && (remote.updatedAt || 0) > (S.updatedAt || 0)) { S = normState(remote); lsWrite(); }
+      dbDoc = ref;
+      if (!remote || S.updatedAt > (remote.updatedAt || 0)) queueDb();
+      renderAll();
+    } catch { /* 没有云端也能正常使用 */ }
+  }
+
+  /* ---------- 小植物 ---------- */
+  const LEAF = '#4fc46f', LEAF_D = '#3aa85a';
+  const STAGES = [
+    { name: '沉睡的种子', desc: '喝第一杯水，它就会醒来' },
+    { name: '刚冒芽', desc: '第一口水下去，它探出头了' },
+    { name: '长出小叶', desc: '再来几杯，叶子要变多啦' },
+    { name: '枝叶茂盛', desc: '它精神得很，全靠你浇灌' },
+    { name: '含苞待放', desc: '就差最后几口，花要开了' },
+    { name: '盛开啦', desc: '今天的任务完成，它在对你笑' },
+  ];
+  const leaf = (x, y, rot, s = 1) => `<g transform="translate(${x} ${y}) rotate(${rot}) scale(${s})"><ellipse cx="0" cy="-9" rx="6.5" ry="11" fill="${LEAF}"/><path d="M0 0 V-15" stroke="${LEAF_D}" stroke-width="1.6" stroke-linecap="round"/></g>`;
+  const stem = (h) => `<path d="M80 121 C78 ${121 - h * 0.4} 83 ${121 - h * 0.7} 80 ${121 - h}" stroke="${LEAF_D}" stroke-width="5" stroke-linecap="round" fill="none"/>`;
+  function flower() {
+    let petals = '';
+    for (let a = 0; a < 360; a += 60) petals += `<ellipse cx="0" cy="-17" rx="9.5" ry="14" fill="#ff9eb5" transform="rotate(${a})"/>`;
+    return `<g transform="translate(80 48)">${petals}<circle r="9" fill="#ffd166"/><circle cx="-2.5" cy="-2" r="1.6" fill="#0f3a47"/><circle cx="2.5" cy="-2" r="1.6" fill="#0f3a47"/><path d="M-3 2.5 q3 3 6 0" stroke="#0f3a47" stroke-width="1.4" fill="none" stroke-linecap="round"/></g>`;
+  }
+  const bud = () => `<g transform="translate(80 50)"><ellipse cx="0" cy="-11" rx="10" ry="15" fill="#ff9eb5"/><path d="M-10 -4 Q0 8 10 -4 Q9 7 0 10 Q-9 7 -10 -4Z" fill="${LEAF}"/></g>`;
+  function plantSvg(stage) {
+    let body;
+    if (stage === 0) body = `<ellipse cx="80" cy="119" rx="6.5" ry="4" fill="#6b4331"/>`;
+    else if (stage === 1) body = stem(26) + leaf(80, 98, -50, 0.8) + leaf(80, 98, 50, 0.8);
+    else if (stage === 2) body = stem(48) + leaf(80, 96, -60, 0.9) + leaf(80, 90, 58, 0.9) + leaf(80, 73, -35, 0.8) + leaf(80, 73, 35, 0.8);
+    else if (stage === 3) body = stem(68) + leaf(80, 104, -65) + leaf(80, 98, 62) + leaf(80, 84, -50) + leaf(80, 80, 48) + leaf(80, 58, -30, 0.9) + leaf(80, 58, 30, 0.9);
+    else body = stem(72) + leaf(80, 104, -65) + leaf(80, 98, 62) + leaf(80, 84, -50) + leaf(80, 80, 48) + (stage === 4 ? bud() : flower());
+    return `<svg viewBox="0 0 160 190" role="img" aria-label="小植物：${STAGES[stage].name}">
+      <path d="M42 128 H118 L110 176 Q109 186 99 186 H61 Q51 186 50 176 Z" fill="#f4896b"/>
+      <rect x="36" y="117" width="88" height="17" rx="8.5" fill="#ee7a5a"/>
+      <ellipse cx="80" cy="121" rx="38" ry="5" fill="#8a5a44"/>
+      <g class="sway">${body}</g>
+      <circle cx="68" cy="156" r="2.6" fill="#0f3a47"/><circle cx="92" cy="156" r="2.6" fill="#0f3a47"/>
+      <ellipse cx="62" cy="163" rx="5" ry="3" fill="#ffd0c2" opacity=".8"/><ellipse cx="98" cy="163" rx="5" ry="3" fill="#ffd0c2" opacity=".8"/>
+      <path d="M74 162 q6 6 12 0" stroke="#0f3a47" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+    </svg>`;
+  }
+  function stageOf(done, goal) {
+    if (done <= 0) return 0;
+    const r = done / goal;
+    return r >= 1 ? 5 : r >= 0.75 ? 4 : r >= 0.5 ? 3 : r >= 0.25 ? 2 : 1;
+  }
+
+  /* ---------- 首页渲染 ---------- */
+  let lastStage = null;
+  const todayDone = () => S.drinks[localParts().date] || 0;
+
+  function nextReminder() {
+    const s = S.settings;
+    if (s.paused) return null;
+    const sched = buildSchedule(s);
+    if (!sched.length) return null;
+    const { min } = localParts();
+    const skip = s.stopAfterGoal && todayDone() >= s.goal;
+    if (!skip) { const later = sched.find((m) => m > min); if (later !== undefined) return { time: fmt(later), tomorrow: false }; }
+    return { time: fmt(sched[0]), tomorrow: true };
+  }
+
+  function renderHome() {
+    const date = localParts().date;
+    const done = S.drinks[date] || 0;
+    const goal = S.settings.goal;
+    const ratio = Math.min(1, done / goal);
+
+    $('#dateLabel').textContent = new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' });
+    $('#waterLevel').style.transform = `translateY(${238 - 198 * ratio}px)`;
+
+    const mouth = $('#mouth');
+    mouth.classList.remove('open');
+    if (done === 0) mouth.setAttribute('d', 'M100 143 q10 -7 20 0');
+    else if (ratio < 0.5) mouth.setAttribute('d', 'M101 139 h18');
+    else if (ratio < 1) mouth.setAttribute('d', 'M98 136 q12 12 24 0');
+    else { mouth.setAttribute('d', 'M96 134 q14 20 28 0 z'); mouth.classList.add('open'); }
+
+    $('#count').textContent = done;
+    $('#goalText').textContent = `/ ${goal} 次`;
+    $('#hint').textContent = done === 0 ? '今天还没喝，小植物正盯着你呢' : done < goal ? `再喝 ${goal - done} 次，小植物就开花啦` : done === goal ? '目标达成！小植物开花了' : '超额完成，你今天很能喝嘛';
+
+    const nx = nextReminder();
+    $('#nextLine').textContent = S.settings.paused ? '提醒已暂停' : !nx ? '今天没有提醒时间，去设置里添加吧' : `下次提醒：${nx.tomorrow ? '明天 ' : ''}${nx.time}`;
+
+    const rs = $('#runstate');
+    rs.classList.toggle('off', S.settings.paused);
+    $('#runTitle').textContent = S.settings.paused ? '提醒已暂停' : '提醒运行中';
+    $('#runSub').textContent = S.settings.paused ? '在设置里关闭「暂停」即可恢复。' : '请保持本页开启，关闭或锁屏后不会响。';
+
+    $('#undoBtn').disabled = done <= 0;
+
+    const stage = stageOf(done, goal);
+    if (lastStage !== stage) {
+      $('#plant').innerHTML = plantSvg(stage);
+      if (lastStage !== null) $('#plant').firstElementChild.classList.add('pop');
+      lastStage = stage;
+    }
+    $('#plantName').textContent = STAGES[stage].name;
+    $('#plantDesc').textContent = STAGES[stage].desc;
+
+    let streak = 0, d = done >= goal ? date : addDays(date, -1);
+    while ((S.drinks[d] || 0) >= goal && streak < 365) { streak++; d = addDays(d, -1); }
+    $('#streak').textContent = streak > 0 ? `连续达标 ${streak} 天` : '还没有连续达标记录，今天开始吧';
+
+    const labels = ['日', '一', '二', '三', '四', '五', '六'];
+    let html = '';
+    for (let i = 6; i >= 0; i--) {
+      const dd = addDays(date, -i), c = S.drinks[dd] || 0, r = Math.min(1, c / goal), isToday = i === 0;
+      html += `<div class="day${r >= 1 ? ' full' : ''}${isToday ? ' today' : ''}" aria-label="${dd} 喝了 ${c} 次"><div class="cup"><i style="height:${Math.round(r * 100)}%"></i></div><span>${isToday ? '今' : labels[new Date(dd + 'T12:00:00Z').getUTCDay()]}</span></div>`;
+    }
+    $('#weekRow').innerHTML = html;
+  }
+
+  let toastTimer = null;
+  function toast(msg) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+  }
+
+  function drink(delta) {
+    const date = localParts().date;
+    const cur = S.drinks[date] || 0;
+    if (delta < 0 && cur <= 0) return;
+    const n = Math.min(99, Math.max(0, cur + delta));
+    if (n === 0) delete S.drinks[date]; else S.drinks[date] = n;
+    save();
+    hideIsland();
+    renderAll();
+    if (delta > 0) toast(n === S.settings.goal ? '目标达成！小植物开花啦' : pick(CHEERS));
+  }
+
+  /* ---------- 提醒：药丸、提示音、亮屏 ---------- */
+  let ac = null, islandTimer = null, snoozeTimer = null, titleTimer = null;
+  const baseTitle = document.title;
+
+  function unlockAudio() {
+    try {
+      if (!ac) { const C = window.AudioContext || window.webkitAudioContext; if (C) ac = new C(); }
+      if (ac && ac.state === 'suspended') ac.resume();
+    } catch { /* 无音频支持 */ }
+  }
+  document.addEventListener('pointerdown', unlockAudio, { passive: true });
+
+  function chime() {
+    if (!S.settings.sound || !ac || ac.state !== 'running') return;
+    const t = ac.currentTime;
+    [[880, 0], [1175, 0.18]].forEach(([f, d]) => {
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.type = 'sine'; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t + d);
+      g.gain.exponentialRampToValueAtTime(0.25, t + d + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + d + 0.5);
+      o.connect(g); g.connect(ac.destination);
+      o.start(t + d); o.stop(t + d + 0.55);
+    });
+  }
+
+  function showIsland(msg) {
+    $('#islandTitle').textContent = msg.title;
+    $('#islandBody').textContent = msg.body;
+    $('#island').classList.add('show');
+    chime();
+    try { if (navigator.vibrate) navigator.vibrate([120, 60, 120]); } catch { /* iOS 不支持 */ }
+    clearInterval(titleTimer);
+    let on = false;
+    titleTimer = setInterval(() => { on = !on; document.title = on ? '💧 该喝水啦' : baseTitle; }, 1200);
+    clearTimeout(islandTimer);
+    islandTimer = setTimeout(hideIsland, 90000);
+  }
+  function hideIsland() {
+    $('#island').classList.remove('show');
+    clearTimeout(islandTimer);
+    clearInterval(titleTimer);
+    document.title = baseTitle;
+  }
+
+  function tick() {
+    const s = S.settings;
+    if (s.paused) return;
+    const { date, min } = localParts();
+    const sentToday = S.sent.date === date ? S.sent.slots : [];
+    const due = buildSchedule(s).filter((m) => m <= min && min - m <= 10 && !sentToday.includes(m));
+    renderHomeLight();
+    if (!due.length) return;
+    S.sent = { date, slots: [...sentToday, ...due] };
+    save();
+    const done = S.drinks[date] || 0;
+    if (s.stopAfterGoal && done >= s.goal) return;
+    showIsland(pickMessage(done, s.goal));
+  }
+  function renderHomeLight() {
+    const nx = nextReminder();
+    if (!S.settings.paused) $('#nextLine').textContent = !nx ? '今天没有提醒时间，去设置里添加吧' : `下次提醒：${nx.tomorrow ? '明天 ' : ''}${nx.time}`;
+  }
+
+  let wake = null;
+  async function applyWake() {
+    try {
+      if (S.settings.keepAwake && document.visibilityState === 'visible' && navigator.wakeLock) {
+        if (!wake) { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); }
+      } else if (wake) { await wake.release(); wake = null; }
+    } catch { wake = null; }
+  }
+
+  /* ---------- 设置面板 ---------- */
+  function renderAll() { renderHome(); if (!$('#sheet').hidden) renderScheduleChips(); }
+
+  function openSheet() { renderSettings(); $('#sheet').hidden = false; document.body.style.overflow = 'hidden'; }
+  function closeSheet() { $('#sheet').hidden = true; document.body.style.overflow = ''; }
+  function changed() { S.settings = normSettings(S.settings); save(); renderAll(); }
+
+  function renderSettings() {
+    const d = S.settings;
+    for (const b of document.querySelectorAll('.seg button')) b.setAttribute('aria-selected', String(b.dataset.mode === d.mode));
+    $('#intervalRow').hidden = d.mode !== 'interval';
+    $('#timesBox').hidden = d.mode !== 'times';
+    $('#intervalSel').value = String(d.intervalMin);
+    $('#quietOn').checked = d.quietEnabled;
+    $('#quietRow').hidden = !d.quietEnabled;
+    $('#quietStart').value = d.quietStart;
+    $('#quietEnd').value = d.quietEnd;
+    $('#goalVal').textContent = d.goal;
+    $('#stopAfterGoal').checked = d.stopAfterGoal;
+    $('#paused').checked = d.paused;
+    $('#soundOn').checked = d.sound;
+    $('#keepAwake').checked = d.keepAwake;
+    $('#keepAwake').closest('label').hidden = !navigator.wakeLock;
+    renderTimes();
+    renderScheduleChips();
+  }
+
+  function renderTimes() {
+    const list = $('#timesList');
+    list.innerHTML = '';
+    S.settings.times.forEach((t, i) => {
+      const li = document.createElement('li');
+      const inp = document.createElement('input');
+      inp.type = 'time'; inp.id = 'time-' + i; inp.value = t;
+      inp.setAttribute('aria-label', `第 ${i + 1} 个提醒时间`);
+      inp.addEventListener('change', () => { if (!inp.value) return; S.settings.times[i] = inp.value; changed(); renderTimes(); });
+      const del = document.createElement('button');
+      del.type = 'button'; del.className = 'del'; del.textContent = '✕'; del.setAttribute('aria-label', '删除这个时间');
+      del.addEventListener('click', () => { S.settings.times.splice(i, 1); changed(); renderTimes(); });
+      li.append(inp, del);
+      list.append(li);
+    });
+    $('#addTime').hidden = S.settings.times.length >= 12;
+  }
+
+  function renderScheduleChips() {
+    const sched = S.settings.paused ? [] : buildSchedule(S.settings).map(fmt);
+    $('#scheduleChips').innerHTML = sched.length ? sched.map((t) => `<span class="chip">${t}</span>`).join('') : '<span class="chip empty">今天没有提醒</span>';
+  }
+
+  function bind() {
+    $('#drinkBtn').addEventListener('click', () => drink(1));
+    $('#undoBtn').addEventListener('click', () => drink(-1));
+    $('#islandYes').addEventListener('click', () => drink(1));
+    $('#islandLater').addEventListener('click', () => {
+      hideIsland();
+      clearTimeout(snoozeTimer);
+      snoozeTimer = setTimeout(() => { const done = todayDone(); if (!(S.settings.stopAfterGoal && done >= S.settings.goal)) showIsland(pickMessage(done, S.settings.goal)); }, 10 * 60 * 1000);
+      toast('好，10 分钟后再来催你');
+    });
+    $('#openSettings').addEventListener('click', openSheet);
+    document.querySelectorAll('[data-close]').forEach((el) => el.addEventListener('click', closeSheet));
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#sheet').hidden) closeSheet(); });
+
+    for (const b of document.querySelectorAll('.seg button')) {
+      b.addEventListener('click', () => {
+        S.settings.mode = b.dataset.mode;
+        if (S.settings.mode === 'times' && S.settings.times.length === 0) S.settings.times = ['09:00', '12:00', '15:00', '18:00'];
+        changed(); renderSettings();
+      });
+    }
+    $('#intervalSel').addEventListener('change', (e) => { S.settings.intervalMin = Number(e.target.value); changed(); });
+    $('#addTime').addEventListener('click', () => {
+      const last = S.settings.times[S.settings.times.length - 1];
+      const t = last ? fmt((toMin(last) + 60) % 1440) : '12:00';
+      S.settings.times.push(t); changed(); renderTimes();
+    });
+    $('#quietOn').addEventListener('change', (e) => { S.settings.quietEnabled = e.target.checked; $('#quietRow').hidden = !e.target.checked; changed(); });
+    $('#quietStart').addEventListener('change', (e) => { if (e.target.value) { S.settings.quietStart = e.target.value; changed(); } });
+    $('#quietEnd').addEventListener('change', (e) => { if (e.target.value) { S.settings.quietEnd = e.target.value; changed(); } });
+    $('#goalMinus').addEventListener('click', () => { S.settings.goal = Math.max(1, S.settings.goal - 1); $('#goalVal').textContent = S.settings.goal; changed(); });
+    $('#goalPlus').addEventListener('click', () => { S.settings.goal = Math.min(20, S.settings.goal + 1); $('#goalVal').textContent = S.settings.goal; changed(); });
+    $('#stopAfterGoal').addEventListener('change', (e) => { S.settings.stopAfterGoal = e.target.checked; changed(); });
+    $('#paused').addEventListener('change', (e) => { S.settings.paused = e.target.checked; changed(); });
+    $('#soundOn').addEventListener('change', (e) => { S.settings.sound = e.target.checked; changed(); if (e.target.checked) { unlockAudio(); chime(); } });
+    $('#keepAwake').addEventListener('change', (e) => { S.settings.keepAwake = e.target.checked; changed(); applyWake(); });
+    $('#previewBtn').addEventListener('click', () => { unlockAudio(); closeSheet(); setTimeout(() => showIsland(pickMessage(todayDone(), S.settings.goal)), 350); });
+
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') { applyWake(); tick(); renderAll(); }
+    });
+  }
+
+  /* ---------- 启动 ---------- */
+  S = normState(lsRead());
+  bind();
+  renderAll();
+  applyWake();
+  tick();
+  setInterval(tick, 15000);
+  initCloud();
+})();
+</script>
+
+</body></html>
