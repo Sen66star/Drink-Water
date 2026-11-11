@@ -1,5 +1,5 @@
 // 喝水啦 service worker：離線快取 + 通知點擊（之後做「互相提醒」時可直接接 push）
-const CACHE = "hoshuila-v1";
+const CACHE = "hoshuila-v2";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
 
 self.addEventListener("install", e => {
@@ -19,7 +19,7 @@ self.addEventListener("activate", e => {
 self.addEventListener("fetch", e => {
   if (e.request.method !== "GET") return;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: "no-cache" })   // 每次都向 GitHub 確認有沒有新版
       .then(res => {
         const copy = res.clone();
         caches.open(CACHE).then(c => c.put(e.request, copy));
