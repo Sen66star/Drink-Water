@@ -241,11 +241,14 @@ input[type=text]{width:140px;text-align:right}
     <div class="sec-title">讓 iPhone 準時叫你</div>
     <div class="card">
       <div class="row">
-        <div><label>App 開著時的通知</label><div class="status" id="notifStatus"></div></div>
-        <button class="addt" id="notifBtn">開啟</button>
+        <div><label>推播提醒</label><div class="status" id="pushStatus"></div></div>
+        <button class="addt" id="pushBtn">開啟</button>
       </div>
-      <p class="note">iPhone 會把關掉的網頁 App 暫停，所以 App 沒開著的時候，要靠行事曆幫忙提醒。按下面的按鈕把整天的提醒排進 iPhone 行事曆（每天重複，每次的嗆人台詞都不一樣）。改了提醒設定記得重新加入一次，並刪掉舊的行事曆事件。</p>
-      <button class="btn primary" id="icsBtn">加入 iPhone 行事曆提醒</button>
+      <p class="note" id="pushNote"></p>
+      <div id="pushOnBox">
+        <button class="btn soft" id="testBtn">傳一則測試通知</button>
+        <button class="btn soft" id="pushOffBtn" style="color:var(--sub)">關閉推播</button>
+      </div>
     </div>
 
     <div class="sec-title">其他</div>
@@ -374,7 +377,103 @@ function load(){
   return { settings:{...DEFAULTS}, state:freshState() };
 }
 let data = load();
-function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){} }
+function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){} syncSoon(); }
+
+/* ================== 推播伺服器 ================== */
+// ↓↓↓ 部署 Cloudflare Worker 之後，把這裡換成你的 Worker 網址（結尾不要加斜線）
+const PUSH_API = "https://drink-water-push.jason8485good.workers.dev";
+const PUSH_KEY = "hoshuila-push";   // "1" = 已開啟推播
+const pushReady = () => !PUSH_API.includes("YOUR-NAME");
+const pushOn = () => { try{ return localStorage.getItem(PUSH_KEY) === "1"; }catch(e){ return false; } };
+function deviceId(){
+  let id = null;
+  try{ id = localStorage.getItem("hoshuila-id"); }catch(e){}
+  if (!id){
+    id = (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2));
+    try{ localStorage.setItem("hoshuila-id", id); }catch(e){}
+  }
+  return id;
+}
+function api(path, body, keepalive){
+  return fetch(PUSH_API + path, {
+    method: body ? "POST" : "GET",
+    headers: body ? { "Content-Type":"application/json" } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+    keepalive: !!keepalive
+  }).then(r => r.json().then(j => { if (!r.ok) throw new Error(j.error || r.status); return j; }));
+}
+let syncTimer = null;
+function syncSoon(ms = 1500){
+  if (!pushOn() || !pushReady()) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => syncNow(), ms);
+}
+async function syncNow(keepalive){
+  clearTimeout(syncTimer); syncTimer = null;
+  if (!pushOn() || !pushReady() || !("serviceWorker" in navigator)) return;
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (!sub){ localStorage.removeItem(PUSH_KEY); renderPush(); return; }   // 訂閱被系統取消了
+    const s = data.settings, st = data.state;
+    await api("/sync", {
+      id: deviceId(), sub: sub.toJSON(),
+      tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Taipei",
+      settings: { mode:s.mode, interval:s.interval, startAt:s.startAt, times:s.times, quietOn:s.quietOn, quietStart:s.quietStart, quietEnd:s.quietEnd, plantName:s.plantName },
+      state: { day:st.day, count:st.count, lastDrink:st.lastDrink }
+    }, keepalive);
+  }catch(e){ console.warn("sync failed", e); }
+}
+function urlB64ToBytes(b64){
+  const s = atob((b64 + "===".slice((b64.length + 3) % 4)).replace(/-/g,"+").replace(/_/g,"/"));
+  return Uint8Array.from(s, c => c.charCodeAt(0));
+}
+async function enablePush(){
+  const btn = $("#pushBtn");
+  btn.disabled = true; btn.textContent = "設定中…";
+  try{
+    // 一定要先在按鈕點擊當下要權限，iPhone 才會跳出詢問
+    const perm = await Notification.requestPermission();
+    if (perm !== "granted") throw new Error("沒有給通知權限");
+    const reg = await navigator.serviceWorker.ready;
+    const { key } = await api("/vapid");
+    let sub = await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe().catch(()=>{});   // 換新的金鑰也能用
+    sub = await reg.pushManager.subscribe({ userVisibleOnly:true, applicationServerKey:urlB64ToBytes(key) });
+    localStorage.setItem(PUSH_KEY, "1");
+    await syncNow();
+    await api("/test", { id: deviceId() }).catch(()=>{});
+    say("搞定！以後就算你把我關掉，時間到我也會跳出來叫你 😎");
+  }catch(e){
+    alert("開啟推播失敗：" + (e.message || e) + "\n\n請確認是從主畫面的「喝水啦」圖示打開，而且 iOS 是 16.4 以上。");
+  }
+  btn.disabled = false;
+  renderPush();
+}
+async function disablePush(){
+  if (!confirm("關閉後，App 沒開著就不會提醒你了，確定嗎？")) return;
+  try{
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    if (sub) await sub.unsubscribe();
+  }catch(e){}
+  localStorage.removeItem(PUSH_KEY);
+  api("/unsubscribe", { id: deviceId() }).catch(()=>{});
+  updateBadge(0);
+  renderPush();
+}
+async function testPush(){
+  const b = $("#testBtn"); b.textContent = "傳送中…";
+  try{ await syncNow(); await api("/test", { id: deviceId() }); b.textContent = "已送出，看看通知 👀"; }
+  catch(e){ b.textContent = "傳送失敗：" + (e.message || e); }
+  setTimeout(() => b.textContent = "傳一則測試通知", 3500);
+}
+let lastBadge = -1;
+function updateBadge(n){
+  if (n === lastBadge || !("setAppBadge" in navigator)) return;
+  lastBadge = n;
+  (n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(()=>{});
+}
 
 /* ================== 排程 ================== */
 function isQuiet(m, s=data.settings){
@@ -516,6 +615,7 @@ function render(){
   $("#nextText").innerHTML = isQuiet(n) ? "勿擾中，安靜陪你 🌙"
     : next !== undefined ? `下次提醒 <b>${fmt(next)}</b>` : "今天的提醒都結束了";
   $("#count").innerHTML = `${s.count}<small> / ${G}</small>`;
+  updateBadge(owe());
 
   const pct = G ? Math.min(s.count / G, 1) : 0;
   document.documentElement.style.setProperty("--level", (6 + pct * 58) + "vh");
@@ -561,11 +661,12 @@ function drink(){
   render();
   setTimeout(render, 2600);
   showToast(`已記錄第 ${s.count} 次`);
+  syncNow(true);   // 馬上告訴伺服器喝過了，15 分鐘內不吵你
 }
 function undo(){
   if (!undoSnap) return;
   Object.assign(data.state, undoSnap); undoSnap = null;
-  save(); cheerUntil = 0; render(); hideToast();
+  save(); syncNow(true); cheerUntil = 0; render(); hideToast();
   say("好，當我沒看到。但你還是要喝喔。");
 }
 function showToast(t){
@@ -597,7 +698,7 @@ function tick(){
   if (last !== -1 && last !== data.state.lastFired){
     data.state.lastFired = last; save();
     const recent = Date.now() - data.state.lastDrink < 15*60*1000;   // 剛喝過就不吵
-    if (n - last <= 5 && !recent) fireReminder();
+    if (n - last <= 5 && !recent && !pushOn()) fireReminder();   // 開了推播就交給伺服器，避免叫兩次
   }
   render();
 }
@@ -608,7 +709,8 @@ function fireReminder(){
   $("#bannerText").textContent = line;
   $("#banner").classList.add("show");
   setTimeout(() => $("#banner").classList.remove("show"), 6000);
-  if ("Notification" in window && Notification.permission === "granted" && swReg){
+  // 開了推播的話，伺服器會送通知，這裡就不重複跳
+  if (!pushOn() && "Notification" in window && Notification.permission === "granted" && swReg){
     swReg.showNotification("喝水啦 💧", { body:line, icon:"icon-180.png", tag:"drink", renotify:true }).catch(()=>{});
   }
 }
@@ -629,7 +731,7 @@ function fillSettings(){
   $("#quietEnd").value = s.quietEnd;
   $("#quietRow1").style.opacity = $("#quietRow2").style.opacity = s.quietOn ? 1 : .4;
   $("#plantName").value = s.plantName;
-  renderTimes(); renderPreview(); renderNotif();
+  renderTimes(); renderPreview(); renderPush();
 }
 function renderTimes(){
   const box = $("#timesList");
@@ -666,49 +768,28 @@ function renderPreview(){
   }
   $("#preview").innerHTML = html;
 }
-function renderNotif(){
-  const el = $("#notifStatus"), btn = $("#notifBtn");
-  if (!("Notification" in window)){
-    el.textContent = "請先「加入主畫面」，再從主畫面打開"; el.className = "status no"; btn.style.display = "none"; return;
-  }
-  const p = Notification.permission;
-  el.textContent = p === "granted" ? "已開啟" : p === "denied" ? "被拒絕了，請到 iPhone 設定開啟" : "尚未開啟";
-  el.className = "status " + (p === "granted" ? "ok" : "no");
-  btn.style.display = p === "default" ? "" : "none";
-}
 function set(k, v){ data.settings[k] = v; save(); fillSettings(); }
 
-/* ---------- 行事曆 (.ics) ---------- */
-function buildICS(){
-  const list = slots(), d = new Date();
-  const ymd = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
-  const stamp = new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+/,"");
-  const esc = t => t.replace(/[\\;,]/g, m => "\\" + m);
-  const pool = [...LINES.remind].sort(() => Math.random() - .5);
-  const out = ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//hoshuila//drink//ZH","CALSCALE:GREGORIAN","X-WR-CALNAME:喝水啦"];
-  list.forEach((m,i) => {
-    const line = fill(pool[i % pool.length]);
-    out.push("BEGIN:VEVENT",
-      `UID:hoshuila-${ymd}-${fmt(m).replace(":","")}-${Date.now()}@drink`,
-      `DTSTAMP:${stamp}`,
-      `DTSTART:${ymd}T${pad(Math.floor(m/60))}${pad(m%60)}00`,
-      "DURATION:PT5M", "RRULE:FREQ=DAILY",
-      `SUMMARY:💧 ${esc(line)}`,
-      "DESCRIPTION:打開「喝水啦」按「我喝了」讓植物長大",
-      "BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${esc(line)}`,"TRIGGER:PT0M","END:VALARM",
-      "END:VEVENT");
-  });
-  out.push("END:VCALENDAR");
-  return out.join("\r\n");
-}
-function exportICS(){
-  if (!slots().length){ alert("目前沒有提醒時間喔。"); return; }
-  const blob = new Blob([buildICS()], { type:"text/calendar;charset=utf-8" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = "喝水提醒.ics";
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
+/* ---------- 推播狀態 ---------- */
+function renderPush(){
+  const el = $("#pushStatus"), btn = $("#pushBtn"), note = $("#pushNote"), onBox = $("#pushOnBox");
+  const standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+  const supported = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const show = (status, ok, btnOn, noteText, onBoxOn) => {
+    el.textContent = status; el.className = "status " + (ok ? "ok" : "no");
+    btn.style.display = btnOn ? "" : "none";
+    note.innerHTML = noteText;
+    onBox.style.display = onBoxOn ? "" : "none";
+  };
+  if (!pushReady())
+    return show("還沒設定推播伺服器", false, false, "請先部署 Cloudflare Worker，再把網址填進 index.html 的 <b>PUSH_API</b>。", false);
+  if (!supported || !standalone)
+    return show("要先加入主畫面", false, false, "請用 Safari 打開這個網頁，按「分享 → 加入主畫面」，再從主畫面的「喝水啦」圖示打開（需要 iOS 16.4 以上）。", false);
+  if (Notification.permission === "denied")
+    return show("通知被拒絕了", false, false, "請到 iPhone「設定 → 通知 → 喝水啦」把允許通知打開，再回來按開啟。", false);
+  if (pushOn() && Notification.permission === "granted")
+    return show("已開啟 ✓", true, false, "就算 App 關著，時間到 iPhone 也會跳通知，點一下直接回到這裡；主畫面圖示的紅色數字是還欠幾杯。剛喝過 15 分鐘內不會吵你。<br>之前加過行事曆提醒的話，記得到行事曆把「💧」事件刪掉，不然會叫兩次。", true);
+  show("尚未開啟", false, true, "開啟後，App 關著也會準時提醒你，不會再塞滿行事曆。", false);
 }
 
 /* ================== 綁定事件 ================== */
@@ -728,11 +809,9 @@ $("#quietOn").addEventListener("change", e => set("quietOn", e.target.checked));
 $("#quietStart").addEventListener("change", e => e.target.value && set("quietStart", e.target.value));
 $("#quietEnd").addEventListener("change", e => e.target.value && set("quietEnd", e.target.value));
 $("#plantName").addEventListener("input", e => { data.settings.plantName = e.target.value.trim() || "小芽"; save(); });
-$("#notifBtn").addEventListener("click", async () => {
-  try { await Notification.requestPermission(); } catch(e){}
-  renderNotif();
-});
-$("#icsBtn").addEventListener("click", exportICS);
+$("#pushBtn").addEventListener("click", enablePush);
+$("#pushOffBtn").addEventListener("click", disablePush);
+$("#testBtn").addEventListener("click", testPush);
 $("#resetToday").addEventListener("click", () => {
   if (!confirm("把今天的次數歸零？")) return;
   data.state.count = 0; save(); render(); closeSettings(); say("好，今天重新開始，這次別偷懶。");
@@ -742,12 +821,25 @@ $("#resetAll").addEventListener("click", () => {
   data = { settings:{...DEFAULTS}, state:freshState() }; save(); closeSettings();
   say("我又變回種子了…這次要好好照顧我喔。");
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) tick(); });
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden){ tick(); syncNow(); }        // 回到 App：順便同步（跨日、訂閱更新）
+  else if (syncTimer) syncNow(true);                 // 離開 App 前把還沒送的設定送出去
+});
 
 /* ================== 啟動 ================== */
 if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
   navigator.serviceWorker.register("sw.js").then(r => { swReg = r; }).catch(()=>{});
+  // App 開著時收到推播：讓植物和橫幅也一起叫
+  navigator.serviceWorker.addEventListener("message", e => {
+    if (!e.data || e.data.type !== "push" || !e.data.body) return;
+    say(e.data.body);
+    const p = $("#plant"); p.classList.remove("ring"); void p.offsetWidth; p.classList.add("ring");
+    $("#bannerText").textContent = e.data.body;
+    $("#banner").classList.add("show");
+    setTimeout(() => $("#banner").classList.remove("show"), 6000);
+  });
 }
+syncNow();
 rollover();
 data.state.lastFired = Math.max(data.state.lastFired, -1);
 render();
