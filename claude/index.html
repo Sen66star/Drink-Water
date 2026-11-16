@@ -162,10 +162,10 @@ input[type=text]{width:140px;text-align:right}
 /* 習慣設定卡 */
 .hcard{border:1px solid var(--line);border-radius:14px;padding:4px 12px;margin:10px 0}
 .hcard .head{display:flex;align-items:center;gap:8px;min-height:50px}
-.hcard .head input.emoji{width:48px;text-align:center;font-size:20px;padding:4px}
-.hcard .head input.name{flex:1;width:auto;text-align:left}
+.hcard .head input.name{flex:1 1 auto;min-width:0;width:auto;text-align:left}
 .emojis{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 8px}
-.emojis button{font-size:20px;width:36px;height:36px;border-radius:10px;background:#eef4f9}
+.emojis button{font-size:20px;width:36px;height:36px;border-radius:10px;background:#eef4f9;border:2px solid transparent}
+.emojis button.on{background:var(--accent-soft);border-color:var(--accent)}
 .sample{font-size:13px;color:var(--sub);line-height:1.6;padding:8px 0}
 .sample b{color:var(--ink)}
 .hcard .foot{display:flex;gap:8px;padding:8px 0 10px}
@@ -540,7 +540,7 @@ function load(){
     const j = JSON.parse(localStorage.getItem(LS_KEY));
     if (j){
       const d = { settings:{...structuredClone(DEFAULTS), ...j.settings}, state:{...freshState(), ...j.state} };
-      d.settings.habits = (d.settings.habits || []).map(h => ({ lines:{remind:[],overdue:[],done:[]}, days:[0,1,2,3,4,5,6], times:["21:00"], on:true, emoji:"📌", ...h }));
+      d.settings.habits = (d.settings.habits || []).map(h => ({ lines:{remind:[],overdue:[],done:[]}, days:[0,1,2,3,4,5,6], times:["21:00"], on:true, ...h, emoji: h.emoji === "📌" ? "" : (h.emoji || "") }));
       return d;
     }
   }catch(e){}
@@ -880,7 +880,7 @@ function renderChips(){
     const b = document.createElement("button");
     b.className = "hchip" + (st.allDone ? " done" : st.due ? " due" : "");
     const tail = st.allDone ? "✓" : st.total > 1 ? `${st.done}/${st.total}` : st.due ? "做了嗎？" : st.next !== undefined ? fmt(st.next) : "";
-    b.innerHTML = `<span>${h.emoji || "📌"} ${h.name}</span>${tail ? `<span class="t">${tail}</span>` : ""}`;
+    b.innerHTML = `<span>${h.emoji ? h.emoji + " " : ""}${h.name}</span>${tail ? `<span class="t">${tail}</span>` : ""}`;
     b.addEventListener("click", () => markHabit(h));
     box.appendChild(b);
   });
@@ -1047,11 +1047,10 @@ function renderHabitList(){
     c.className = "hcard";
     c.innerHTML = `
       <div class="head">
-        <input type="text" class="emoji" maxlength="2" value="${h.emoji || ""}" aria-label="圖示">
         <input type="text" class="name" maxlength="10" placeholder="習慣名稱，例如 擦藥" value="${h.name || ""}">
         <label class="switch"><input type="checkbox" ${h.on ? "checked" : ""}><span></span></label>
       </div>
-      <div class="emojis">${EMOJIS.map(e => `<button type="button" data-e="${e}">${e}</button>`).join("")}</div>
+      <div class="emojis">${EMOJIS.map(e => `<button type="button" data-e="${e}" class="${h.emoji === e ? "on" : ""}" aria-label="圖示 ${e}">${e}</button>`).join("")}</div>
       <div class="row" style="display:block;border:0;padding-top:0">
         <label>哪幾天</label>
         <div class="days">${[1,2,3,4,5,6,0].map(d => `<button type="button" data-d="${d}" class="${(h.days||[]).includes(d) ? "on" : ""}">${"日一二三四五六"[d]}</button>`).join("")}</div>
@@ -1061,12 +1060,15 @@ function renderHabitList(){
       <div class="sample"></div>
       <div class="foot"><button type="button" class="gen"></button><button type="button" class="del">刪除</button></div>`;
     const after = () => { save(); fillSettings(); };
-    const nameInp = c.querySelector("input.name"), emojiInp = c.querySelector("input.emoji");
+    const nameInp = c.querySelector("input.name");
     nameInp.addEventListener("input", e => { h.name = e.target.value.trim(); save(); });
     nameInp.addEventListener("blur", () => { if (h.name && h.name !== h.linesFor) genLines(h, c); });   // 名稱改了就重寫台詞
-    emojiInp.addEventListener("input", e => { h.emoji = e.target.value.trim(); save(); render(); });
     c.querySelector(".switch input").addEventListener("change", e => { h.on = e.target.checked; after(); });
-    c.querySelectorAll(".emojis button").forEach(b => b.addEventListener("click", () => { h.emoji = b.dataset.e; emojiInp.value = h.emoji; save(); render(); }));
+    c.querySelectorAll(".emojis button").forEach(b => b.addEventListener("click", () => {
+      h.emoji = h.emoji === b.dataset.e ? "" : b.dataset.e;   // 再點一次取消
+      c.querySelectorAll(".emojis button").forEach(x => x.classList.toggle("on", x.dataset.e === h.emoji));
+      save(); render();
+    }));
     c.querySelectorAll(".days button").forEach(b => b.addEventListener("click", () => {
       const d = Number(b.dataset.d), cur = h.days || [];
       h.days = cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort(); after();
@@ -1250,7 +1252,7 @@ $("#pushBtn").addEventListener("click", enablePush);
 $("#addHabit").addEventListener("click", () => {
   const list = data.settings.habits = data.settings.habits || [];
   if (list.length >= MAX_HABITS) return;
-  list.push({ id:newHabitId(), name:"", emoji:"📌", on:true, days:[0,1,2,3,4,5,6], times:["21:00"], lines:{remind:[],overdue:[],done:[]} });
+  list.push({ id:newHabitId(), name:"", emoji:"", on:true, days:[0,1,2,3,4,5,6], times:["21:00"], lines:{remind:[],overdue:[],done:[]} });
   save(); fillSettings();
   const cards = document.querySelectorAll(".hcard"); const last = cards[cards.length-1];
   last.scrollIntoView({ block:"center", behavior:"smooth" }); last.querySelector("input.name").focus();
