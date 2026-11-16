@@ -1,5 +1,5 @@
 // 喝水啦 service worker：離線快取 + 伺服器推播 + 圖示紅點
-const CACHE = "hoshuila-v5";
+const CACHE = "hoshuila-v6";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png", "./lines.json"];
 
 self.addEventListener("install", e => {
@@ -36,7 +36,7 @@ self.addEventListener("push", e => {
   try { d = e.data ? e.data.json() : {}; } catch (err) { d = { body: e.data && e.data.text() }; }
   const jobs = [
     self.registration.showNotification(d.title || "喝水啦 💧", {
-      body: d.body || "該喝水了！",
+      body: d.body || "",
       icon: "icon-180.png",
       badge: "icon-180.png",
       tag: d.tag || "drink",
@@ -49,7 +49,8 @@ self.addEventListener("push", e => {
     jobs.push((d.badge > 0 ? self.navigator.setAppBadge(d.badge) : self.navigator.clearAppBadge()).catch(() => {}));
   }
   // App 剛好開著的話，讓畫面上的植物也一起叫
-  jobs.push(self.clients.matchAll({ type: "window" }).then(list => list.forEach(c => c.postMessage({ type: "push", body: d.body }))));
+  const text = [d.title, d.body].filter(Boolean).join("\n");
+  jobs.push(self.clients.matchAll({ type: "window" }).then(list => list.forEach(c => c.postMessage({ type: "push", body: text }))));
   e.waitUntil(Promise.all(jobs));
 });
 

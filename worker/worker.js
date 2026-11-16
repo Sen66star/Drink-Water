@@ -229,11 +229,11 @@ function buildMessage(row, s, st, now, kind, pool, withSit) {
   const owe = Math.max(0, past.length - count);
   const next = list.find(m => m > now.min);
   const fill = t => t.replace("{name}", s.plantName || "小芽").replace("{owe}", owe).replace("{next}", next !== undefined ? fmt(next) : "明天");
-  if (kind === "sit") return { title: "該起來動一動囉 🚶", body: fill(pick(activeLines(pool, "sit", now.day))), badge: owe, tag: "sit" };
+  // iPhone 會自動在標題下面加一行「from 喝水啦」，所以台詞直接當標題，不再重複寫「喝水啦」
+  if (kind === "sit") return { title: fill(pick(activeLines(pool, "sit", now.day))), body: "", badge: owe, tag: "sit" };
   const lines = kind === "test" ? LINES.test : activeLines(pool, owe > 1 ? "overdue" : "remind", now.day);
-  let body = fill(pick(lines));
-  if (withSit) body += "\n" + fill(pick(activeLines(pool, "sitTail", now.day)));
-  return { title: "喝水啦 💧", body, badge: owe, tag: "drink" };
+  const body = withSit ? fill(pick(activeLines(pool, "sitTail", now.day))) : "";
+  return { title: fill(pick(lines)), body, badge: owe, tag: "drink" };
 }
 
 async function runSchedule(env) {

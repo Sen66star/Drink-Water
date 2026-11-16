@@ -843,12 +843,14 @@ function tick(){
   render();
 }
 function fireReminder(slot){
-  let line = fill(owe() > 1 ? pick(activeLines("overdue")) : pick(activeLines("remind")));
-  if (slot !== undefined && sitSlots().some(m => Math.abs(m - slot) <= MERGE)) line += "\n" + fill(pick(activeLines("sitTail")));
-  showReminder(line, "喝水啦 💧", "drink");
+  const main = fill(owe() > 1 ? pick(activeLines("overdue")) : pick(activeLines("remind")));
+  const tail = (slot !== undefined && sitSlots().some(m => Math.abs(m - slot) <= MERGE)) ? fill(pick(activeLines("sitTail"))) : "";
+  showReminder(main, tail, "drink");
 }
-function fireSit(){ showReminder(fill(pick(activeLines("sit"))), "該起來動一動囉 🚶", "sit"); }
-function showReminder(line, title, tag){
+function fireSit(){ showReminder(fill(pick(activeLines("sit"))), "", "sit"); }
+// iPhone 會自動在標題下面加「from 喝水啦」，所以台詞直接當標題
+function showReminder(main, tail, tag){
+  const line = tail ? main + "\n" + tail : main;
   say(line);
   const p = $("#plant"); p.classList.remove("ring"); void p.offsetWidth; p.classList.add("ring");
   $("#bannerText").textContent = line;
@@ -856,7 +858,7 @@ function showReminder(line, title, tag){
   setTimeout(() => $("#banner").classList.remove("show"), 6000);
   // 開了推播的話，伺服器會送通知，這裡就不重複跳
   if (!pushOn() && "Notification" in window && Notification.permission === "granted" && swReg){
-    swReg.showNotification(title, { body:line, icon:"icon-180.png", tag, renotify:true }).catch(()=>{});
+    swReg.showNotification(main, { body:tail, icon:"icon-180.png", tag, renotify:true }).catch(()=>{});
   }
 }
 
