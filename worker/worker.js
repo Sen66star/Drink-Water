@@ -352,7 +352,23 @@ async function runSchedule(env) {
 
 /* ================== AI 寫台詞（Cloudflare Workers AI） ================== */
 const AI_MODELS = ["@cf/qwen/qwen3-30b-a3b-fp8", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/mistralai/mistral-small-3.1-24b-instruct"];
-function aiPrompt(name, plant) {
+// 提示詞放在 GitHub 的 claude/ai-prompt.txt，改那個檔案就能調整台詞風格，不用重新部署；讀不到才用下面這份備用
+const PROMPT_URL = "https://raw.githubusercontent.com/sen66star/Drink-Water/main/claude/ai-prompt.txt";
+let promptCache = { at: 0, text: "" };
+async function aiPrompt(name, plant) {
+  if (!promptCache.text || Date.now() - promptCache.at > 2 * 60 * 1000) {
+    try {
+      const r = await fetch(PROMPT_URL + "?v=" + Math.floor(Date.now() / 60000));
+      if (r.ok) {
+        const t = (await r.text()).split("\n").filter(l => !l.startsWith("#")).join("\n").trim();
+        if (t.includes("{habit}") && t.length > 100) promptCache = { at: Date.now(), text: t };
+      }
+    } catch (e) { console.log("ai-prompt.txt 讀取失敗，用備用提示詞", e && e.message); }
+  }
+  if (promptCache.text) return promptCache.text.replace(/\{habit\}/g, name).replace(/\{plant\}/g, plant);
+  return builtinPrompt(name, plant);
+}
+function builtinPrompt(name, plant) {
   return `你是一盆會說話的小植物，名字叫「${plant}」，住在一個養成習慣的手機 App 裡，個性俏皮、愛鬧、會嗆人但不刻薄，像好朋友一樣催主人。
 主人想養成的習慣是：「${name}」。
 
@@ -370,10 +386,19 @@ function aiPrompt(name, plant) {
 - 只輸出 JSON，格式：{"remind":[...],"overdue":[...],"done":[...]}，不要其他文字。`;
 }
 function cleanLines(arr, min, max) {
-  const seen = new Set();
-  return (Array.isArray(arr) ? arr : []).map(x => String(x).replace(/^\s*[\d一二三四五六七八九十]+[\.、\)）]\s*/, "").replace(/^["「『]|["」』]$/g, "").trim())
-    .filter(x => x.length >= 4 && x.length <= 40 && !seen.has(x) && seen.add(x))
-    .slice(0, max);
+  const seen = new Set(), opens = {};
+  let tilde = 0;
+  const out = [];
+  for (let x of (Array.isArray(arr) ? arr : [])) {
+    x = String(x).replace(/^\s*[-*•]?\s*[\d一二三四五六七八九十]+[\.、\)）]\s*/, "").replace(/^["「『]|["」』]$/g, "").trim();
+    if (/[～~]$/.test(x)) { tilde++; if (tilde > 2) x = x.replace(/[～~]+$/, "").replace(/[啦啊]$/, "") + (/[？！。]$/.test(x) ? "" : "。"); }
+    const op = x.slice(0, 3);
+    if (x.length < 4 || x.length > 40 || seen.has(x) || (opens[op] || 0) >= 2) continue;   // 同樣開頭最多 2 句
+    seen.add(x); opens[op] = (opens[op] || 0) + 1;
+    out.push(x);
+    if (out.length >= max) break;
+  }
+  return out;
 }
 function extractJSON(text) {
   if (text && typeof text === "object") return text;   // 有些模型會直接回傳已解析的物件
@@ -397,9 +422,9 @@ async function generateLines(env, name, plant) {
     try {
       const messages = [
         { role: "system", content: "你只會輸出 JSON。/no_think" },
-        { role: "user", content: aiPrompt(name, plant) }
+        { role: "user", content: await aiPrompt(name, plant) }
       ];
-      const r = await env.AI.run(model, { messages, max_tokens: 2500, temperature: 0.9 });
+      const r = await env.AI.run(model, { messages, max_tokens: 3000, temperature: 0.95 });
       const j = extractJSON(aiText(r));
       const out = { remind: cleanLines(j.remind, 6, 12), overdue: cleanLines(j.overdue, 3, 6), done: cleanLines(j.done, 3, 6), model };
       if (out.remind.length < 6 || out.overdue.length < 3 || out.done.length < 3)
