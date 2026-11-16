@@ -43,6 +43,16 @@ const LINES = {
     "我不是在生氣，我只是很乾。",
     "還欠 {owe} 次，現在補喝還來得及。"
   ],
+  sit: [
+    "你的屁股已經跟椅子結婚了，快起來離婚。",
+    "坐太久囉！站起來伸個懶腰吧 🙆",
+    "起來走兩步，{name} 幫你顧位子。",
+    "站起來動一動，腰會感謝你的。"
+  ],
+  sitTail: [
+    "順便起來走兩步 🚶",
+    "倒水的路上，順便伸個懶腰吧。"
+  ],
   test: [
     "測試成功！以後時間到我就會這樣叫你 💧",
     "叮！推播通了，App 關著我也找得到你。"
@@ -94,15 +104,26 @@ function slots(s) {
   }
   return [...new Set(list)].filter(m => Number.isFinite(m) && !isQuiet(m, s)).sort((a, b) => a - b);
 }
+/* ---------- 久坐提醒（和網頁的算法一致） ---------- */
+const MERGE = 10;   // 跟喝水提醒差 10 分鐘以內就合併成一則
+function sitSlots(s, now) {
+  if (!s.sitOn) return [];
+  if (s.sitWeekdays && (now.wd === 0 || now.wd === 6)) return [];
+  const a = toMin(s.sitStart || "09:00"), b = toMin(s.sitEnd || "18:00"), step = Math.max(15, Number(s.sitInterval) || 60);
+  const list = [];
+  for (let m = a + step; m <= b; m += step) list.push(m);
+  return list.filter(m => !isQuiet(m, s));
+}
 function localNow(tz) {
   let f;
   try {
-    f = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    f = new Intl.DateTimeFormat("en-CA", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23", weekday: "short" });
   } catch (e) {
-    f = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+    f = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Taipei", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23", weekday: "short" });
   }
   const p = Object.fromEntries(f.formatToParts(new Date()).map(x => [x.type, x.value]));
-  return { day: `${p.year}-${p.month}-${p.day}`, min: Number(p.hour) * 60 + Number(p.minute) };
+  const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].indexOf(p.weekday);
+  return { day: `${p.year}-${p.month}-${p.day}`, min: Number(p.hour) * 60 + Number(p.minute), wd };
 }
 
 /* ================== Web Push（RFC 8291 + VAPID，純 WebCrypto） ================== */
@@ -190,23 +211,25 @@ async function ensureTable(env) {
   if (tableReady) return;
   await env.DB.prepare(`CREATE TABLE IF NOT EXISTS subs (
     id TEXT PRIMARY KEY, sub TEXT NOT NULL, settings TEXT NOT NULL, state TEXT NOT NULL,
-    tz TEXT NOT NULL, last_sent TEXT NOT NULL DEFAULT '', updated INTEGER NOT NULL)`).run();
+    tz TEXT NOT NULL, last_sent TEXT NOT NULL DEFAULT '', updated INTEGER NOT NULL,
+    last_sit TEXT NOT NULL DEFAULT '')`).run();
+  try { await env.DB.prepare("ALTER TABLE subs ADD COLUMN last_sit TEXT NOT NULL DEFAULT ''").run(); } catch (e) {}   // 舊資料表補欄位
   tableReady = true;
 }
 
 /* ================== 每分鐘檢查 ================== */
-function buildMessage(row, s, st, now, kind, pool) {
+function buildMessage(row, s, st, now, kind, pool, withSit) {
   const list = slots(s);
   const past = list.filter(m => m <= now.min);
   const count = st.day === now.day ? (Number(st.count) || 0) : 0;
   const owe = Math.max(0, past.length - count);
   const next = list.find(m => m > now.min);
+  const fill = t => t.replace("{name}", s.plantName || "小芽").replace("{owe}", owe).replace("{next}", next !== undefined ? fmt(next) : "明天");
+  if (kind === "sit") return { title: "該起來動一動囉 🚶", body: fill(pick(activeLines(pool, "sit", now.day))), badge: owe, tag: "sit" };
   const lines = kind === "test" ? LINES.test : activeLines(pool, owe > 1 ? "overdue" : "remind", now.day);
-  const body = pick(lines)
-    .replace("{name}", s.plantName || "小芽")
-    .replace("{owe}", owe)
-    .replace("{next}", next !== undefined ? fmt(next) : "明天");
-  return { title: "喝水啦 💧", body, badge: owe };
+  let body = fill(pick(lines));
+  if (withSit) body += "\n" + fill(pick(activeLines(pool, "sitTail", now.day)));
+  return { title: "喝水啦 💧", body, badge: owe, tag: "drink" };
 }
 
 async function runSchedule(env) {
@@ -218,18 +241,40 @@ async function runSchedule(env) {
     try {
       const s = JSON.parse(row.settings), st = JSON.parse(row.state), sub = JSON.parse(row.sub);
       const now = localNow(row.tz);
-      const past = slots(s).filter(m => m <= now.min);
-      if (!past.length) return;
-      const last = past[past.length - 1];
-      const key = `${now.day} ${fmt(last)}`;
-      if (row.last_sent === key || now.min - last > 5) return;   // 已送過，或錯過太久就不補
-      updates.push(env.DB.prepare("UPDATE subs SET last_sent = ? WHERE id = ?").bind(key, row.id));
-      if (Date.now() - (Number(st.lastDrink) || 0) < 15 * 60 * 1000) return;   // 剛喝過就不吵
-      const res = await sendPush(sub, buildMessage(row, s, st, now, "remind", pool), env);
-      if (res.status === 404 || res.status === 410) {
-        updates.push(env.DB.prepare("DELETE FROM subs WHERE id = ?").bind(row.id));   // 訂閱失效
-      } else if (!res.ok) {
-        console.log("push failed", row.id, res.status, await res.text());
+      const water = slots(s), sits = sitSlots(s, now);
+      const recent = Date.now() - (Number(st.lastDrink) || 0) < 15 * 60 * 1000;   // 剛喝過就不吵
+      const send = async msg => {
+        const res = await sendPush(sub, msg, env);
+        if (res.status === 404 || res.status === 410) {
+          updates.push(env.DB.prepare("DELETE FROM subs WHERE id = ?").bind(row.id));   // 訂閱失效
+        } else if (!res.ok) {
+          console.log("push failed", row.id, res.status, await res.text());
+        }
+      };
+
+      // 喝水提醒（附近有久坐提醒就合併成一則）
+      const past = water.filter(m => m <= now.min);
+      if (past.length) {
+        const last = past[past.length - 1];
+        const key = `${now.day} ${fmt(last)}`;
+        if (row.last_sent !== key && now.min - last <= 5) {   // 沒送過，而且沒錯過太久
+          updates.push(env.DB.prepare("UPDATE subs SET last_sent = ? WHERE id = ?").bind(key, row.id));
+          if (!recent) {
+            const withSit = sits.some(m => Math.abs(m - last) <= MERGE);
+            await send(buildMessage(row, s, st, now, "remind", pool, withSit));
+          }
+        }
+      }
+
+      // 久坐提醒（跟喝水撞在一起的，已經合併在上面那則）
+      const sitPast = sits.filter(m => m <= now.min);
+      if (sitPast.length) {
+        const last = sitPast[sitPast.length - 1];
+        const key = `${now.day} ${fmt(last)}`;
+        if (row.last_sit !== key && now.min - last <= 5) {
+          updates.push(env.DB.prepare("UPDATE subs SET last_sit = ? WHERE id = ?").bind(key, row.id));
+          if (!water.some(m => Math.abs(m - last) <= MERGE)) await send(buildMessage(row, s, st, now, "sit", pool));
+        }
       }
     } catch (e) {
       console.log("row error", row.id, e && e.message);
@@ -264,7 +309,12 @@ function cleanSettings(s = {}) {
     quietOn: !!s.quietOn,
     quietStart: t(s.quietStart) || "22:30",
     quietEnd: t(s.quietEnd) || "07:30",
-    plantName: String(s.plantName || "小芽").slice(0, 8)
+    plantName: String(s.plantName || "小芽").slice(0, 8),
+    sitOn: !!s.sitOn,
+    sitInterval: Math.min(240, Math.max(15, Number(s.sitInterval) || 60)),
+    sitStart: t(s.sitStart) || "09:00",
+    sitEnd: t(s.sitEnd) || "18:00",
+    sitWeekdays: s.sitWeekdays !== false
   };
 }
 

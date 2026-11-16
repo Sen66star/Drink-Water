@@ -80,6 +80,10 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .drink{width:100%;max-width:380px;height:64px;border-radius:32px;background:#fff;color:var(--accent);font-size:20px;font-weight:800;
   box-shadow:0 10px 26px #1a5c8f33;transition:transform .12s;margin-top:14px;flex:none}
 .drink:active{transform:scale(.96)}
+.stand{width:100%;max-width:380px;height:52px;margin-bottom:12px;border-radius:26px;border:0;background:var(--accent);color:#fff;font-size:18px;font-weight:800;cursor:pointer;box-shadow:0 6px 16px #1f7fd133;animation:standPulse 1.6s ease-in-out infinite}
+.stand:active{transform:scale(.96)}
+@keyframes standPulse{50%{box-shadow:0 0 0 8px #1f7fd122}}
+@media (prefers-reduced-motion: reduce){.stand{animation:none}}
 
 /* 提醒橫幅 */
 #banner{position:fixed;z-index:8;left:12px;right:12px;top:calc(env(safe-area-inset-top) + 8px);max-width:440px;margin:auto;
@@ -185,6 +189,7 @@ input[type=text]{width:140px;text-align:right}
     </div>
   </div>
 
+  <button class="stand" id="standBtn" hidden>我起來了 🚶</button>
   <button class="drink" id="drinkBtn">我喝了 💧</button>
 </main>
 
@@ -233,6 +238,31 @@ input[type=text]{width:140px;text-align:right}
       </div>
       <div class="row" id="quietRow1"><label for="quietStart">開始</label><input type="time" id="quietStart"></div>
       <div class="row" id="quietRow2"><label for="quietEnd">結束</label><input type="time" id="quietEnd"></div>
+    </div>
+
+    <div class="sec-title">久坐提醒</div>
+    <div class="card">
+      <div class="row">
+        <label for="sitOn">開啟久坐提醒</label>
+        <label class="switch"><input type="checkbox" id="sitOn"><span></span></label>
+      </div>
+      <div id="sitBox">
+        <div class="row">
+          <label for="sitInterval">每隔</label>
+          <select id="sitInterval">
+            <option value="30">30 分鐘</option><option value="45">45 分鐘</option>
+            <option value="60">1 小時</option><option value="90">1.5 小時</option>
+            <option value="120">2 小時</option>
+          </select>
+        </div>
+        <div class="row"><label for="sitStart">開始</label><input type="time" id="sitStart"></div>
+        <div class="row"><label for="sitEnd">結束</label><input type="time" id="sitEnd"></div>
+        <div class="row">
+          <div><label for="sitWeekdays">只在平日提醒</label><div class="hint">週六、週日不吵你</div></div>
+          <label class="switch"><input type="checkbox" id="sitWeekdays"><span></span></label>
+        </div>
+      </div>
+      <div class="preview" id="sitPreview"></div>
     </div>
 
     <div class="sec-title">通知停留方式</div>
@@ -363,7 +393,26 @@ const LINES = {
     "早安！今天也要一起喝水喔。",
     "新的一天，先來一杯開機水吧 ☀️"
   ],
-  stageUp: "我長大了！{name} 變成「{stage}」了 🌿"
+  stageUp: "我長大了！{name} 變成「{stage}」了 🌿",
+  sit: [
+    "你的屁股已經跟椅子結婚了，快起來離婚。",
+    "坐太久囉！站起來伸個懶腰吧 🙆",
+    "起來走兩步，{name} 幫你顧位子。",
+    "椅子說它需要一點私人空間。",
+    "站起來動一動，腰會感謝你的。"
+  ],
+  sitTail: [
+    "順便起來走兩步 🚶",
+    "倒水的路上，順便伸個懶腰吧。",
+    "去裝水，順便讓屁股放個風。"
+  ],
+  stood: [
+    "好樣的！站起來的你特別帥 ✨",
+    "腰：謝謝你，我又活過來了。",
+    "很好，椅子也鬆了一口氣。",
+    "動一動，{name} 都跟著精神起來了！",
+    "起身成功！記得順便喝口水喔 💧"
+  ]
 };
 
 /* ---------- 嗆人台詞輪替（每兩週換一半，台詞放在 lines.json） ---------- */
@@ -406,7 +455,8 @@ const DEFAULTS = {
   mode:"interval", interval:90, startAt:"08:00",
   times:["08:30","10:30","12:30","15:00","17:00","19:30"],
   quietOn:true, quietStart:"22:30", quietEnd:"07:30",
-  plantName:"小芽"
+  plantName:"小芽",
+  sitOn:false, sitInterval:60, sitStart:"09:00", sitEnd:"18:00", sitWeekdays:true
 };
 const pad = n => String(n).padStart(2,"0");
 const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
@@ -416,7 +466,7 @@ const nowMin = () => { const d=new Date(); return d.getHours()*60+d.getMinutes()
 const pick = a => a[Math.floor(Math.random()*a.length)];
 const $ = s => document.querySelector(s);
 
-function freshState(){ return { day:dayKey(), count:0, total:0, streak:0, lastFired:-1, lastDrink:0 }; }
+function freshState(){ return { day:dayKey(), count:0, total:0, streak:0, lastFired:-1, lastDrink:0, lastSit:-1, stood:"" }; }
 function load(){
   try{
     const j = JSON.parse(localStorage.getItem(LS_KEY));
@@ -467,7 +517,8 @@ async function syncNow(keepalive){
     await api("/sync", {
       id: deviceId(), sub: sub.toJSON(),
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Taipei",
-      settings: { mode:s.mode, interval:s.interval, startAt:s.startAt, times:s.times, quietOn:s.quietOn, quietStart:s.quietStart, quietEnd:s.quietEnd, plantName:s.plantName },
+      settings: { mode:s.mode, interval:s.interval, startAt:s.startAt, times:s.times, quietOn:s.quietOn, quietStart:s.quietStart, quietEnd:s.quietEnd, plantName:s.plantName,
+                  sitOn:s.sitOn, sitInterval:s.sitInterval, sitStart:s.sitStart, sitEnd:s.sitEnd, sitWeekdays:s.sitWeekdays },
       state: { day:st.day, count:st.count, lastDrink:st.lastDrink }
     }, keepalive);
   }catch(e){ console.warn("sync failed", e); }
@@ -541,6 +592,22 @@ function slots(s=data.settings){
   return [...new Set(list)].filter(m => !isQuiet(m, s)).sort((a,b)=>a-b);
 }
 const goal = () => slots().length;
+/* ---------- 久坐提醒 ---------- */
+const MERGE = 10;   // 跟喝水提醒差 10 分鐘以內就合併成一則
+function sitSlots(s=data.settings, d=new Date()){
+  if (!s.sitOn) return [];
+  if (s.sitWeekdays && (d.getDay() === 0 || d.getDay() === 6)) return [];
+  const a = toMin(s.sitStart), b = toMin(s.sitEnd), step = Math.max(15, Number(s.sitInterval)||60);
+  const list = [];
+  for (let m = a + step; m <= b; m += step) list.push(m);
+  return list.filter(m => !isQuiet(m, s));
+}
+const sitMerged = (m, s=data.settings) => slots(s).some(w => Math.abs(w - m) <= MERGE);
+function standDue(){
+  const n = nowMin();
+  const m = sitSlots().filter(x => x <= n && n - x <= 20).pop();
+  return (m !== undefined && data.state.stood !== `${dayKey()} ${m}`) ? m : null;
+}
 function owe(){
   const n = nowMin();
   const due = slots().filter(m => m <= n).length;
@@ -561,6 +628,7 @@ function rollover(){
   data.state.day = today;
   data.state.count = 0;
   data.state.lastFired = -1;
+  data.state.lastSit = -1;
   save();
   say(pick(LINES.morning));
 }
@@ -653,6 +721,7 @@ function moodLine(){
 }
 
 function render(){
+  $("#standBtn").hidden = standDue() === null;
   const s = data.state, G = goal(), n = nowMin();
   const d = new Date();
   $("#dateChip").textContent = `${d.getMonth()+1}/${d.getDate()} 週${"日一二三四五六"[d.getDay()]}`;
@@ -746,12 +815,22 @@ function tick(){
   if (last !== -1 && last !== data.state.lastFired){
     data.state.lastFired = last; save();
     const recent = Date.now() - data.state.lastDrink < 15*60*1000;   // 剛喝過就不吵
-    if (n - last <= 5 && !recent && !pushOn()) fireReminder();   // 開了推播就交給伺服器，避免叫兩次
+    if (n - last <= 5 && !recent && !pushOn()) fireReminder(last);   // 開了推播就交給伺服器，避免叫兩次
+  }
+  const sp = sitSlots().filter(m => m <= n), sl = sp.length ? sp[sp.length-1] : -1;
+  if (sl !== -1 && sl !== data.state.lastSit){
+    data.state.lastSit = sl; save();
+    if (n - sl <= 5 && !sitMerged(sl) && !pushOn()) fireSit();
   }
   render();
 }
-function fireReminder(){
-  const line = fill(owe() > 1 ? pick(activeLines("overdue")) : pick(activeLines("remind")));
+function fireReminder(slot){
+  let line = fill(owe() > 1 ? pick(activeLines("overdue")) : pick(activeLines("remind")));
+  if (slot !== undefined && sitSlots().some(m => Math.abs(m - slot) <= MERGE)) line += "\n" + fill(pick(activeLines("sitTail")));
+  showReminder(line, "喝水啦 💧", "drink");
+}
+function fireSit(){ showReminder(fill(pick(activeLines("sit"))), "該起來動一動囉 🚶", "sit"); }
+function showReminder(line, title, tag){
   say(line);
   const p = $("#plant"); p.classList.remove("ring"); void p.offsetWidth; p.classList.add("ring");
   $("#bannerText").textContent = line;
@@ -759,7 +838,7 @@ function fireReminder(){
   setTimeout(() => $("#banner").classList.remove("show"), 6000);
   // 開了推播的話，伺服器會送通知，這裡就不重複跳
   if (!pushOn() && "Notification" in window && Notification.permission === "granted" && swReg){
-    swReg.showNotification("喝水啦 💧", { body:line, icon:"icon-180.png", tag:"drink", renotify:true }).catch(()=>{});
+    swReg.showNotification(title, { body:line, icon:"icon-180.png", tag, renotify:true }).catch(()=>{});
   }
 }
 
@@ -780,6 +859,12 @@ function fillSettings(){
   tv("#quietEnd", s.quietEnd);
   $("#quietRow1").style.opacity = $("#quietRow2").style.opacity = s.quietOn ? 1 : .4;
   $("#plantName").value = s.plantName;
+  $("#sitOn").checked = s.sitOn;
+  $("#sitBox").style.opacity = s.sitOn ? 1 : .4;
+  $("#sitInterval").value = String(s.sitInterval);
+  tv("#sitStart", s.sitStart); tv("#sitEnd", s.sitEnd);
+  $("#sitWeekdays").checked = s.sitWeekdays;
+  renderSitPreview();
   renderTimes(); renderPreview(); renderPush(); fillRotNote();
 }
 function renderTimes(){
@@ -815,6 +900,19 @@ function renderPreview(){
     if (blocked.length) html += `<br><span class="warn">${blocked.join("、")} 落在勿擾時段，不會提醒。</span>`;
   }
   $("#preview").innerHTML = html;
+  if ($("#sitPreview")) renderSitPreview();
+}
+function renderSitPreview(){
+  const s = data.settings, el = $("#sitPreview");
+  if (!s.sitOn) { el.innerHTML = "關閉中。打開後，坐太久我會叫你起來動一動。"; return; }
+  if (toMin(s.sitEnd) <= toMin(s.sitStart)) { el.innerHTML = `<span class="warn">結束時間要比開始時間晚喔。</span>`; return; }
+  const d = new Date(), weekend = d.getDay() === 0 || d.getDay() === 6;
+  const all = sitSlots(s, weekend ? new Date(d.getTime() + (d.getDay() === 6 ? 2 : 1) * 86400000) : d);
+  if (!all.length) { el.innerHTML = `<span class="warn">這個時段排不進任何提醒，換個設定試試看。</span>`; return; }
+  const merged = all.filter(m => sitMerged(m, s));
+  let html = `${weekend && s.sitWeekdays ? "今天是週末不提醒，平日" : "每天"}會提醒 <b>${all.length}</b> 次：<br>${all.map(fmt).join("、")}`;
+  if (merged.length) html += `<br>其中 ${merged.map(fmt).join("、")} 跟喝水提醒很接近，會合併成一則。`;
+  el.innerHTML = html;
 }
 function set(k, v){ data.settings[k] = v; save(); fillSettings(); }
 
@@ -842,6 +940,13 @@ function renderPush(){
 
 /* ================== 綁定事件 ================== */
 $("#drinkBtn").addEventListener("click", drink);
+$("#standBtn").addEventListener("click", () => {
+  const m = standDue();
+  if (m !== null) { data.state.stood = `${dayKey()} ${m}`; save(); }
+  const p = $("#plant"); p.classList.remove("bounce"); void p.offsetWidth; p.classList.add("bounce");
+  say(fill(pick(LINES.stood)));
+  render();
+});
 $("#undoBtn").addEventListener("click", undo);
 $("#plant").addEventListener("click", () => {
   const p = $("#plant"); p.classList.remove("bounce"); void p.offsetWidth; p.classList.add("bounce");
@@ -860,6 +965,11 @@ bindTime($("#startAt"), v => set("startAt", v));
 $("#quietOn").addEventListener("change", e => set("quietOn", e.target.checked));
 bindTime($("#quietStart"), v => set("quietStart", v));
 bindTime($("#quietEnd"), v => set("quietEnd", v));
+$("#sitOn").addEventListener("change", e => set("sitOn", e.target.checked));
+$("#sitWeekdays").addEventListener("change", e => set("sitWeekdays", e.target.checked));
+$("#sitInterval").addEventListener("change", e => set("sitInterval", Number(e.target.value)));
+bindTime($("#sitStart"), v => set("sitStart", v));
+bindTime($("#sitEnd"), v => set("sitEnd", v));
 $("#plantName").addEventListener("input", e => { data.settings.plantName = e.target.value.trim() || "小芽"; save(); });
 $("#pushBtn").addEventListener("click", enablePush);
 $("#bannerHelpBtn").addEventListener("click", () => {

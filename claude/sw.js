@@ -1,5 +1,5 @@
 // 喝水啦 service worker：離線快取 + 伺服器推播 + 圖示紅點
-const CACHE = "hoshuila-v4";
+const CACHE = "hoshuila-v5";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png", "./lines.json"];
 
 self.addEventListener("install", e => {
@@ -39,7 +39,7 @@ self.addEventListener("push", e => {
       body: d.body || "該喝水了！",
       icon: "icon-180.png",
       badge: "icon-180.png",
-      tag: "drink",
+      tag: d.tag || "drink",
       renotify: true,
       data: { url: "./" }
     })
