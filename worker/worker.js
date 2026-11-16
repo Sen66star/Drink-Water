@@ -6,6 +6,7 @@
 //   變數 VAPID_SUBJECT      例如 mailto:you@example.com
 //   變數 ALLOWED_ORIGIN     例如 https://sen66star.github.io
 //   Cron 觸發器            * * * * *（每分鐘）
+//   Workers AI 綁定        AI（自訂習慣的台詞用 AI 寫）
 
 /* ================== 文案 ==================
    嗆人台詞放在 GitHub 的 claude/lines.json（網頁和推播共用），每兩週換一半。
@@ -53,6 +54,22 @@ const LINES = {
     "順便起來走兩步 🚶",
     "倒水的路上，順便伸個懶腰吧。"
   ],
+  habit: {
+    remind: [
+      "{item}的時間到了，別裝沒看到 👀",
+      "叮！該{item}了，{name} 在旁邊盯著你。",
+      "說好要{item}的，現在就是那個「等一下」。",
+      "{item}只要幾分鐘，拖延才花時間。",
+      "我都準時叫你了，{item}就交給你了。",
+      "今天的{item}還沒打勾喔。"
+    ],
+    overdue: [
+      "{item}還沒做喔，我都有記著。",
+      "已讀不{item}，太過分了吧。",
+      "催第二次了，{item}到底做了沒？",
+      "再不{item}，{name} 要開始碎碎念了。"
+    ]
+  },
   test: [
     "測試成功！以後時間到我就會這樣叫你 💧",
     "叮！推播通了，App 關著我也找得到你。"
@@ -118,6 +135,13 @@ function sitSlots(s, now) {
   }
   return [...new Set(list)].filter(m => Number.isFinite(m) && !isQuiet(m, s)).sort((x, y) => x - y);
 }
+/* ---------- 自訂習慣（和網頁的算法一致） ---------- */
+const NAG = 30;   // 時間到 30 分鐘後還沒做，再催一次
+function habitSlots(h, s, now) {
+  if (!h.on || !(h.days || []).includes(now.wd)) return [];
+  return [...new Set((h.times || []).filter(Boolean).map(toMin))].filter(m => Number.isFinite(m) && !isQuiet(m, s)).sort((a, b) => a - b);
+}
+const habitAt = (s, now, m) => (s.habits || []).some(h => habitSlots(h, s, now).some(x => Math.abs(x - m) <= MERGE));
 function localNow(tz) {
   let f;
   try {
@@ -218,6 +242,8 @@ async function ensureTable(env) {
     tz TEXT NOT NULL, last_sent TEXT NOT NULL DEFAULT '', updated INTEGER NOT NULL,
     last_sit TEXT NOT NULL DEFAULT '')`).run();
   try { await env.DB.prepare("ALTER TABLE subs ADD COLUMN last_sit TEXT NOT NULL DEFAULT ''").run(); } catch (e) {}   // 舊資料表補欄位
+  try { await env.DB.prepare("ALTER TABLE subs ADD COLUMN last_habit TEXT NOT NULL DEFAULT ''").run(); } catch (e) {}
+  await env.DB.prepare("CREATE TABLE IF NOT EXISTS gen_quota (id TEXT PRIMARY KEY, day TEXT NOT NULL, n INTEGER NOT NULL)").run();
   tableReady = true;
 }
 
@@ -231,6 +257,12 @@ function buildMessage(row, s, st, now, kind, pool, withSit) {
   const fill = t => t.replace("{name}", s.plantName || "小芽").replace("{owe}", owe).replace("{next}", next !== undefined ? fmt(next) : "明天");
   // iPhone 會自動在標題下面加一行「from 喝水啦」，所以台詞直接當標題，不再重複寫「喝水啦」
   if (kind === "sit") return { title: fill(pick(activeLines(pool, "sit", now.day))), body: "", badge: owe, tag: "sit" };
+  if (kind === "habit" || kind === "habit-nag") {
+    const h = withSit.h, cat = kind === "habit" ? "remind" : "overdue";
+    const own = h.lines && Array.isArray(h.lines[cat]) ? h.lines[cat].filter(Boolean) : [];
+    const title = fill(pick(own.length ? own : LINES.habit[cat]).replace(/\{item\}/g, h.name));
+    return { title, body: withSit.tail || "", badge: owe, tag: "habit-" + h.id };
+  }
   const lines = kind === "test" ? LINES.test : activeLines(pool, owe > 1 ? "overdue" : "remind", now.day);
   const body = withSit ? fill(pick(activeLines(pool, "sitTail", now.day))) : "";
   return { title: fill(pick(lines)), body, badge: owe, tag: "drink" };
@@ -256,14 +288,45 @@ async function runSchedule(env) {
         }
       };
 
-      // 喝水提醒（附近有久坐提醒就合併成一則）
+      // 自訂習慣：時間到提醒一次，30 分鐘後還沒做再催一次；同時間的喝水、久坐併進這一則
+      let fired = {};
+      try { fired = JSON.parse(row.last_habit || "{}") || {}; } catch (e) { fired = {}; }
+      const done = (st.habitDone && typeof st.habitDone === "object") ? st.habitDone : {};
+      let firedChanged = false;
+      for (const h of s.habits || []) {
+        for (const m of habitSlots(h, s, now)) {
+          const k = `${h.id} ${now.day} ${fmt(m)}`, nk = k + " nag";
+          const isDone = ((done[h.id] || []).includes(`${now.day} ${m}`));
+          if (m <= now.min && !fired[k]) {
+            fired[k] = 1; firedChanged = true;
+            if (now.min - m <= 5) {
+              const others = (s.habits || []).filter(o => o.id !== h.id && habitSlots(o, s, now).some(x => Math.abs(x - m) <= MERGE));
+              let tail = others.length ? "還有：" + others.map(o => o.name).join("、") : "";
+              if (!tail && water.some(x => Math.abs(x - m) <= MERGE)) tail = "順便喝口水 💧";
+              else if (!tail && sits.some(x => Math.abs(x - m) <= MERGE)) tail = fill(pick(activeLines(pool, "sitTail", now.day)));
+              await send(buildMessage(row, s, st, now, "habit", pool, { h, tail }));
+            }
+          }
+          if (m + NAG <= now.min && !fired[nk]) {
+            fired[nk] = 1; firedChanged = true;
+            if (now.min - (m + NAG) <= 5 && !isDone) await send(buildMessage(row, s, st, now, "habit-nag", pool, { h }));
+          }
+        }
+      }
+      if (firedChanged) {
+        // 只留今天的紀錄，避免越存越大
+        const keep = Object.fromEntries(Object.entries(fired).filter(([k]) => k.includes(" " + now.day + " ")));
+        updates.push(env.DB.prepare("UPDATE subs SET last_habit = ? WHERE id = ?").bind(JSON.stringify(keep), row.id));
+      }
+
+      // 喝水提醒（附近有久坐提醒就合併成一則；有習慣同時提醒就併進習慣那一則）
       const past = water.filter(m => m <= now.min);
       if (past.length) {
         const last = past[past.length - 1];
         const key = `${now.day} ${fmt(last)}`;
         if (row.last_sent !== key && now.min - last <= 5) {   // 沒送過，而且沒錯過太久
           updates.push(env.DB.prepare("UPDATE subs SET last_sent = ? WHERE id = ?").bind(key, row.id));
-          if (!recent) {
+          if (!recent && !habitAt(s, now, last)) {
             const withSit = sits.some(m => Math.abs(m - last) <= MERGE);
             await send(buildMessage(row, s, st, now, "remind", pool, withSit));
           }
@@ -277,7 +340,7 @@ async function runSchedule(env) {
         const key = `${now.day} ${fmt(last)}`;
         if (row.last_sit !== key && now.min - last <= 5) {
           updates.push(env.DB.prepare("UPDATE subs SET last_sit = ? WHERE id = ?").bind(key, row.id));
-          if (!water.some(m => Math.abs(m - last) <= MERGE)) await send(buildMessage(row, s, st, now, "sit", pool));
+          if (!water.some(m => Math.abs(m - last) <= MERGE) && !habitAt(s, now, last)) await send(buildMessage(row, s, st, now, "sit", pool));
         }
       }
     } catch (e) {
@@ -285,6 +348,56 @@ async function runSchedule(env) {
     }
   }));
   if (updates.length) await env.DB.batch(updates);
+}
+
+/* ================== AI 寫台詞（Cloudflare Workers AI） ================== */
+const AI_MODELS = ["@cf/qwen/qwen3-30b-a3b-fp8", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"];
+function aiPrompt(name, plant) {
+  return `你是一盆會說話的小植物，名字叫「${plant}」，住在一個養成習慣的手機 App 裡，個性俏皮、愛鬧、會嗆人但不刻薄，像好朋友一樣催主人。
+主人想養成的習慣是：「${name}」。
+
+請寫三組台詞，全部用繁體中文、台灣口語（不要簡體字、不要中國用語）：
+1. remind：時間到了提醒主人去做「${name}」，12 句。
+2. overdue：提醒過了主人還沒做，再催一次，語氣更急、像在催債，6 句。
+3. done：主人做完了，誇獎或鬧他一下，6 句。
+
+規則：
+- 每句 8～22 個字，一句一行，不要編號。
+- 台詞要跟「${name}」這件事有關，有畫面、有梗，不要只是「記得${name}」。
+- 可以偶爾放一個 emoji，不要每句都放。
+- 可以在少數幾句用 {name} 代表植物自己的名字。
+- 不要提到生病、死亡、身材、宗教、政治，不要給任何醫療或專業建議。
+- 只輸出 JSON，格式：{"remind":[...],"overdue":[...],"done":[...]}，不要其他文字。`;
+}
+function cleanLines(arr, min, max) {
+  const seen = new Set();
+  return (Array.isArray(arr) ? arr : []).map(x => String(x).replace(/^\s*[\d一二三四五六七八九十]+[\.、\)）]\s*/, "").replace(/^["「『]|["」』]$/g, "").trim())
+    .filter(x => x.length >= 4 && x.length <= 40 && !seen.has(x) && seen.add(x))
+    .slice(0, max);
+}
+function extractJSON(text) {
+  const t = String(text).replace(/<think>[\s\S]*?<\/think>/g, "");
+  const a = t.indexOf("{"), b = t.lastIndexOf("}");
+  if (a < 0 || b <= a) throw new Error("no json");
+  return JSON.parse(t.slice(a, b + 1));
+}
+async function generateLines(env, name, plant) {
+  let lastErr = null;
+  for (const model of AI_MODELS) {
+    try {
+      const messages = [
+        { role: "system", content: "你只會輸出 JSON。/no_think" },
+        { role: "user", content: aiPrompt(name, plant) }
+      ];
+      const r = await env.AI.run(model, { messages, max_tokens: 1200, temperature: 0.9 });
+      const text = typeof r === "string" ? r : (r.response ?? (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content) ?? "");
+      const j = extractJSON(text);
+      const out = { remind: cleanLines(j.remind, 6, 12), overdue: cleanLines(j.overdue, 3, 6), done: cleanLines(j.done, 3, 6), model };
+      if (out.remind.length < 6 || out.overdue.length < 3 || out.done.length < 3) throw new Error("too few lines from " + model);
+      return out;
+    } catch (e) { lastErr = e; console.log("AI model failed", model, e && e.message); }
+  }
+  throw lastErr || new Error("AI failed");
 }
 
 /* ================== API ================== */
@@ -320,7 +433,16 @@ function cleanSettings(s = {}) {
     sitEnd: t(s.sitEnd) || "18:00",
     sitMode: s.sitMode === "custom" ? "custom" : "interval",
     sitTimes: (Array.isArray(s.sitTimes) ? s.sitTimes : []).map(t).filter(Boolean).slice(0, 48),
-    sitDays: (Array.isArray(s.sitDays) ? s.sitDays : [0, 1, 2, 3, 4, 5, 6]).map(Number).filter(d => d >= 0 && d <= 6)
+    sitDays: (Array.isArray(s.sitDays) ? s.sitDays : [0, 1, 2, 3, 4, 5, 6]).map(Number).filter(d => d >= 0 && d <= 6),
+    habits: (Array.isArray(s.habits) ? s.habits : []).slice(0, 4).map(h => ({
+      id: String(h.id || "").replace(/[^A-Za-z0-9]/g, "").slice(0, 24),
+      name: String(h.name || "").slice(0, 10),
+      emoji: String(h.emoji || "📌").slice(0, 4),
+      on: h.on !== false,
+      days: (Array.isArray(h.days) ? h.days : []).map(Number).filter(d => d >= 0 && d <= 6),
+      times: (Array.isArray(h.times) ? h.times : []).map(t).filter(Boolean).slice(0, 6),
+      lines: Object.fromEntries(["remind", "overdue"].map(c => [c, (h.lines && Array.isArray(h.lines[c]) ? h.lines[c] : []).map(x => String(x).slice(0, 60)).slice(0, 20)]))
+    })).filter(h => h.id && h.name)
   };
 }
 
@@ -346,7 +468,13 @@ async function handle(req, env) {
     if (!sub || !sub.keys || !sub.keys.p256dh || !sub.keys.auth || !String(sub.endpoint).startsWith("https://") || !PUSH_HOSTS.some(r => r.test(host)))
       return json({ error: "bad subscription" }, 400, h);
     const st = b.state || {};
-    const state = { day: String(st.day || "").slice(0, 10), count: Number(st.count) || 0, lastDrink: Number(st.lastDrink) || 0 };
+    const hd = {};
+    if (st.habitDone && typeof st.habitDone === "object") {
+      for (const [k, v] of Object.entries(st.habitDone).slice(0, 8)) {
+        if (Array.isArray(v)) hd[String(k).slice(0, 24)] = v.map(x => String(x).slice(0, 20)).slice(0, 12);
+      }
+    }
+    const state = { day: String(st.day || "").slice(0, 10), count: Number(st.count) || 0, lastDrink: Number(st.lastDrink) || 0, habitDone: hd };
     let tz = String(b.tz || "Asia/Taipei").slice(0, 64);
     try { new Intl.DateTimeFormat("en", { timeZone: tz }); } catch (e) { tz = "Asia/Taipei"; }
     await env.DB.prepare(`INSERT INTO subs (id, sub, settings, state, tz, updated) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
@@ -354,6 +482,26 @@ async function handle(req, env) {
       .bind(b.id, JSON.stringify({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }),
         JSON.stringify(cleanSettings(b.settings)), JSON.stringify(state), tz, Date.now()).run();
     return json({ ok: true }, 200, h);
+  }
+
+  if (path === "/lines") {
+    if (!env.AI) return json({ error: "伺服器還沒綁定 Workers AI" }, 503, h);
+    const name = String(b.name || "").trim().slice(0, 10);
+    if (!name) return json({ error: "缺少習慣名稱" }, 400, h);
+    const plant = String(b.plant || "小芽").slice(0, 8);
+    // 每台裝置每天最多 10 次
+    const today = localNow("Asia/Taipei").day;
+    const q = await env.DB.prepare("SELECT day, n FROM gen_quota WHERE id = ?").bind(b.id).first();
+    const n = (q && q.day === today) ? Number(q.n) : 0;
+    if (n >= 10) return json({ error: "今天的 AI 額度用完了，明天再試" }, 429, h);
+    await env.DB.prepare("INSERT INTO gen_quota (id, day, n) VALUES (?1, ?2, ?3) ON CONFLICT(id) DO UPDATE SET day = ?2, n = ?3").bind(b.id, today, n + 1).run();
+    try {
+      const lines = await generateLines(env, name, plant);
+      return json(lines, 200, h);
+    } catch (e) {
+      console.log("AI failed", e && e.message);
+      return json({ error: "AI 暫時沒回應" }, 502, h);
+    }
   }
 
   if (path === "/unsubscribe") {

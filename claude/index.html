@@ -77,6 +77,15 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .bar{height:6px;background:#d6e8f5;border-radius:3px;margin-top:6px;overflow:hidden}
 .bar i{display:block;height:100%;background:var(--leaf);border-radius:3px;transition:width .6s}
 
+/* 今日習慣 */
+.habits{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-top:10px;max-width:420px}
+.habits:empty{display:none}
+.hchip{display:flex;align-items:center;gap:6px;padding:8px 13px;border-radius:999px;background:#ffffffc4;font-size:14px;font-weight:700;color:var(--sub);transition:transform .12s}
+.hchip:active{transform:scale(.95)}
+.hchip .t{font-weight:600;font-size:12px;opacity:.8}
+.hchip.due{background:var(--accent);color:#fff;animation:standPulse 1.6s ease-in-out infinite}
+.hchip.due .t{opacity:.9}
+.hchip.done{background:#e3f6e6;color:#2b9a48}
 .drink{width:100%;max-width:380px;height:64px;border-radius:32px;background:#fff;color:var(--accent);font-size:20px;font-weight:800;
   box-shadow:0 10px 26px #1a5c8f33;transition:transform .12s;margin-top:14px;flex:none}
 .drink:active{transform:scale(.96)}
@@ -150,6 +159,19 @@ input[type=text]{width:140px;text-align:right}
 .btn.danger{background:#fdecec;color:#d33b3b}
 .note{font-size:13px;color:var(--sub);line-height:1.6;margin:4px 0 12px}
 .status{font-size:13px;font-weight:700}
+/* 習慣設定卡 */
+.hcard{border:1px solid var(--line);border-radius:14px;padding:4px 12px;margin:10px 0}
+.hcard .head{display:flex;align-items:center;gap:8px;min-height:50px}
+.hcard .head input.emoji{width:48px;text-align:center;font-size:20px;padding:4px}
+.hcard .head input.name{flex:1;width:auto;text-align:left}
+.emojis{display:flex;flex-wrap:wrap;gap:6px;padding:4px 0 8px}
+.emojis button{font-size:20px;width:36px;height:36px;border-radius:10px;background:#eef4f9}
+.sample{font-size:13px;color:var(--sub);line-height:1.6;padding:8px 0}
+.sample b{color:var(--ink)}
+.hcard .foot{display:flex;gap:8px;padding:8px 0 10px}
+.hcard .foot button{flex:1;padding:9px;border-radius:10px;font-weight:700;font-size:14px}
+.hcard .foot .gen{background:var(--accent-soft);color:var(--accent)}
+.hcard .foot .del{background:#fdecec;color:#d33b3b;flex:0 0 auto;padding:9px 14px}
 .status.ok{color:#2b9a48}.status.no{color:var(--warn)}
 
 @media (prefers-reduced-motion:reduce){
@@ -190,6 +212,7 @@ input[type=text]{width:140px;text-align:right}
       <div id="plantInfo"></div>
       <div class="bar"><i id="plantBar"></i></div>
     </div>
+    <div class="habits" id="habitChips"></div>
   </div>
 
   <button class="stand" id="standBtn" hidden>我起來了 🚶</button>
@@ -275,6 +298,13 @@ input[type=text]{width:140px;text-align:right}
         <div id="sitCustomBox"><div class="times" id="sitTimesList"></div></div>
       </div>
       <div class="preview" id="sitPreview"></div>
+    </div>
+
+    <div class="sec-title">我的習慣</div>
+    <div class="card">
+      <p class="note">想養成的小事都可以加進來，例如擦藥、讀點書、寫日記。時間到植物會催你，做完按一下，植物也會跟著長大。台詞由 AI 依照習慣名稱寫，每個習慣都不一樣。</p>
+      <div id="habitList"></div>
+      <button class="btn soft" id="addHabit">＋ 新增習慣</button>
     </div>
 
     <div class="sec-title">通知停留方式</div>
@@ -418,6 +448,28 @@ const LINES = {
     "倒水的路上，順便伸個懶腰吧。",
     "去裝水，順便讓屁股放個風。"
   ],
+  habit: {
+    remind: [
+      "{item}的時間到了，別裝沒看到 👀",
+      "叮！該{item}了，{name} 在旁邊盯著你。",
+      "說好要{item}的，現在就是那個「等一下」。",
+      "{item}只要幾分鐘，拖延才花時間。",
+      "我都準時叫你了，{item}就交給你了。",
+      "今天的{item}還沒打勾喔。"
+    ],
+    overdue: [
+      "{item}還沒做喔，我都有記著。",
+      "已讀不{item}，太過分了吧。",
+      "催第二次了，{item}到底做了沒？",
+      "再不{item}，{name} 要開始碎碎念了。"
+    ],
+    done: [
+      "{item}完成！{name} 給你拍拍手 👏",
+      "很好，今天的{item}打勾了。",
+      "有做有保佑，{item}達成 ✨",
+      "乖，這才是會照顧自己的人。"
+    ]
+  },
   stood: [
     "好樣的！站起來的你特別帥 ✨",
     "腰：謝謝你，我又活過來了。",
@@ -469,8 +521,11 @@ const DEFAULTS = {
   quietOn:true, quietStart:"22:30", quietEnd:"07:30",
   plantName:"小芽",
   sitOn:false, sitMode:"interval", sitInterval:60, sitStart:"09:00", sitEnd:"18:00",
-  sitTimes:["10:00","11:30","14:00","15:30","17:00"], sitDays:[0,1,2,3,4,5,6]
+  sitTimes:["10:00","11:30","14:00","15:30","17:00"], sitDays:[0,1,2,3,4,5,6],
+  habits:[]   // { id, name, emoji, on, days:[0-6], times:["21:00"], lines:{remind,overdue,done}, linesAt }
 };
+const MAX_HABITS = 4;
+const EMOJIS = ["🩹","💊","📖","📝","🧘","🏃","🦷","🌙","🧴","💪","🎹","🧹"];
 const pad = n => String(n).padStart(2,"0");
 const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
 const fmt = m => pad(Math.floor(m/60)) + ":" + pad(m%60);
@@ -479,11 +534,15 @@ const nowMin = () => { const d=new Date(); return d.getHours()*60+d.getMinutes()
 const pick = a => a[Math.floor(Math.random()*a.length)];
 const $ = s => document.querySelector(s);
 
-function freshState(){ return { day:dayKey(), count:0, total:0, streak:0, lastFired:-1, lastDrink:0, lastSit:-1, stood:"" }; }
+function freshState(){ return { day:dayKey(), count:0, total:0, streak:0, lastFired:-1, lastDrink:0, lastSit:-1, stood:"", habitDone:{}, habitFired:{} }; }
 function load(){
   try{
     const j = JSON.parse(localStorage.getItem(LS_KEY));
-    if (j) return { settings:{...structuredClone(DEFAULTS), ...j.settings}, state:{...freshState(), ...j.state} };
+    if (j){
+      const d = { settings:{...structuredClone(DEFAULTS), ...j.settings}, state:{...freshState(), ...j.state} };
+      d.settings.habits = (d.settings.habits || []).map(h => ({ lines:{remind:[],overdue:[],done:[]}, days:[0,1,2,3,4,5,6], times:["21:00"], on:true, emoji:"📌", ...h }));
+      return d;
+    }
   }catch(e){}
   return { settings:structuredClone(DEFAULTS), state:freshState() };
 }
@@ -532,8 +591,9 @@ async function syncNow(keepalive){
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Taipei",
       settings: { mode:s.mode, interval:s.interval, startAt:s.startAt, times:s.times, quietOn:s.quietOn, quietStart:s.quietStart, quietEnd:s.quietEnd, plantName:s.plantName,
                   sitOn:s.sitOn, sitMode:s.sitMode, sitInterval:s.sitInterval, sitStart:s.sitStart, sitEnd:s.sitEnd,
-                  sitTimes:s.sitTimes, sitDays:s.sitDays },
-      state: { day:st.day, count:st.count, lastDrink:st.lastDrink }
+                  sitTimes:s.sitTimes, sitDays:s.sitDays,
+                  habits:(s.habits||[]).map(h => ({ id:h.id, name:h.name, emoji:h.emoji, on:h.on, days:h.days, times:h.times, lines:h.lines })) },
+      state: { day:st.day, count:st.count, lastDrink:st.lastDrink, habitDone:todayDone() }
     }, keepalive);
   }catch(e){ console.warn("sync failed", e); }
 }
@@ -620,11 +680,41 @@ function sitSlots(s=data.settings, d=new Date()){
   }
   return [...new Set(list)].filter(m => !isQuiet(m, s)).sort((x,y) => x-y);
 }
-const sitMerged = (m, s=data.settings) => slots(s).some(w => Math.abs(w - m) <= MERGE);
+const sitMerged = (m, s=data.settings) => slots(s).some(w => Math.abs(w - m) <= MERGE) || habitMergedWith(m, s);
 function standDue(){
   const n = nowMin();
   const m = sitSlots().filter(x => x <= n && n - x <= 20).pop();
   return (m !== undefined && data.state.stood !== `${dayKey()} ${m}`) ? m : null;
+}
+/* ---------- 自訂習慣 ---------- */
+const NAG = 30;   // 時間到 30 分鐘後還沒做，再催一次
+const habitKey = (h, m, d=new Date()) => `${dayKey(d)} ${m}`;
+function habitSlots(h, s=data.settings, d=new Date()){
+  if (!h.on || !(h.days || []).includes(d.getDay())) return [];
+  return [...new Set((h.times||[]).filter(Boolean).map(toMin))].filter(m => !isQuiet(m, s)).sort((a,b)=>a-b);
+}
+function todayDone(){
+  const out = {}, today = dayKey();
+  for (const [id, list] of Object.entries(data.state.habitDone || {})){
+    const keep = (list || []).filter(k => k.startsWith(today));
+    if (keep.length) out[id] = keep;
+  }
+  return out;
+}
+const isDone = (h, m) => ((data.state.habitDone || {})[h.id] || []).includes(habitKey(h, m));
+function habitStatus(h){
+  const all = habitSlots(h), n = nowMin();
+  const done = all.filter(m => isDone(h, m)).length;
+  const due = all.filter(m => m <= n && !isDone(h, m));
+  return { total:all.length, done, due:due.length > 0, allDone:all.length > 0 && done >= all.length, next:all.find(m => m > n && !isDone(h, m)) };
+}
+function hl(h, cat){
+  const own = h.lines && h.lines[cat];
+  const t = pick(own && own.length ? own : LINES.habit[cat]);
+  return fill(t.replace(/\{item\}/g, h.name));
+}
+function habitMergedWith(m, s=data.settings){   // 這個時間點有沒有習慣提醒
+  return (s.habits||[]).some(h => habitSlots(h, s).some(x => Math.abs(x - m) <= MERGE));
 }
 function owe(){
   const n = nowMin();
@@ -647,6 +737,8 @@ function rollover(){
   data.state.count = 0;
   data.state.lastFired = -1;
   data.state.lastSit = -1;
+  data.state.habitFired = {};
+  data.state.habitDone = todayDone();
   save();
   say(pick(LINES.morning));
 }
@@ -762,16 +854,36 @@ function render(){
     p.classList.toggle("thirsty", md === "thirsty");
     lastPlantKey = key;
   }
+  renderChips();
   const nm = data.settings.plantName || "小芽";
   const nextStage = STAGES[st+1];
   if (nextStage){
     const span = nextStage.at - STAGES[st].at, done = s.total - STAGES[st].at;
-    $("#plantInfo").innerHTML = `<b>${nm}</b>・${STAGES[st].name}　再喝 <b>${nextStage.at - s.total}</b> 次會長大`;
+    const verb = (data.settings.habits||[]).length ? "再完成" : "再喝";
+    $("#plantInfo").innerHTML = `<b>${nm}</b>・${STAGES[st].name}　${verb} <b>${nextStage.at - s.total}</b> 次會長大`;
     $("#plantBar").style.width = (done/span*100) + "%";
   } else {
-    $("#plantInfo").innerHTML = `<b>${nm}</b>・開花了！累積喝了 <b>${s.total}</b> 次`;
+    $("#plantInfo").innerHTML = `<b>${nm}</b>・開花了！累積 <b>${s.total}</b> 次`;
     $("#plantBar").style.width = "100%";
   }
+}
+
+function renderChips(){
+  const box = $("#habitChips");
+  const list = (data.settings.habits||[]).filter(h => habitSlots(h).length);
+  const key = JSON.stringify(list.map(h => [h.id, h.emoji, h.name, habitStatus(h)]));
+  if (box.dataset.key === key) return;
+  box.dataset.key = key;
+  box.innerHTML = "";
+  list.forEach(h => {
+    const st = habitStatus(h);
+    const b = document.createElement("button");
+    b.className = "hchip" + (st.allDone ? " done" : st.due ? " due" : "");
+    const tail = st.allDone ? "✓" : st.total > 1 ? `${st.done}/${st.total}` : st.due ? "做了嗎？" : st.next !== undefined ? fmt(st.next) : "";
+    b.innerHTML = `<span>${h.emoji || "📌"} ${h.name}</span>${tail ? `<span class="t">${tail}</span>` : ""}`;
+    b.addEventListener("click", () => markHabit(h));
+    box.appendChild(b);
+  });
 }
 
 /* ================== 喝水 ================== */
@@ -797,6 +909,24 @@ function drink(){
   setTimeout(render, 2600);
   showToast(`已記錄第 ${s.count} 次`);
   syncNow(true);   // 馬上告訴伺服器喝過了，15 分鐘內不吵你
+}
+function markHabit(h){
+  const s = data.state, all = habitSlots(h), n = nowMin();
+  const slot = all.find(m => m <= n && !isDone(h, m)) ?? all.find(m => !isDone(h, m));
+  if (slot === undefined){ say(hl(h, "done")); return; }   // 今天都做完了
+  s.habitDone = todayDone();
+  undoSnap = { total:s.total, habitDone:JSON.parse(JSON.stringify(s.habitDone)) };
+  (s.habitDone[h.id] = s.habitDone[h.id] || []).push(habitKey(h, slot));
+  const before = stageOf(s.total); s.total++;
+  save();
+  cheerUntil = Date.now() + 2500;
+  const after = stageOf(s.total);
+  if (after > before){ say(LINES.stageUp.replace("{stage}", STAGES[after].name)); rain("🌱"); }
+  else say(hl(h, "done"));
+  const p = $("#plant"); p.classList.remove("bounce"); void p.offsetWidth; p.classList.add("bounce");
+  render(); setTimeout(render, 2600);
+  showToast(`已記錄：${h.name}`);
+  syncNow(true);
 }
 function undo(){
   if (!undoSnap) return;
@@ -833,12 +963,21 @@ function tick(){
   if (last !== -1 && last !== data.state.lastFired){
     data.state.lastFired = last; save();
     const recent = Date.now() - data.state.lastDrink < 15*60*1000;   // 剛喝過就不吵
-    if (n - last <= 5 && !recent && !pushOn()) fireReminder(last);   // 開了推播就交給伺服器，避免叫兩次
+    if (n - last <= 5 && !recent && !pushOn() && !habitMergedWith(last)) fireReminder(last);   // 開了推播就交給伺服器，避免叫兩次；有習慣同時提醒就併進那一則
   }
   const sp = sitSlots().filter(m => m <= n), sl = sp.length ? sp[sp.length-1] : -1;
   if (sl !== -1 && sl !== data.state.lastSit){
     data.state.lastSit = sl; save();
     if (n - sl <= 5 && !sitMerged(sl) && !pushOn()) fireSit();
+  }
+  // 自訂習慣：時間到提醒一次，30 分鐘後還沒做再催一次
+  const fired = data.state.habitFired = data.state.habitFired || {};
+  for (const h of data.settings.habits || []){
+    for (const m of habitSlots(h)){
+      const k = habitKey(h, m), nk = k + " nag";
+      if (m <= n && !fired[k]){ fired[k] = 1; save(); if (n - m <= 5 && !pushOn()) fireHabit(h, m, false); }
+      if (m + NAG <= n && !fired[nk]){ fired[nk] = 1; save(); if (n - (m + NAG) <= 5 && !isDone(h, m) && !pushOn()) fireHabit(h, m, true); }
+    }
   }
   render();
 }
@@ -848,6 +987,13 @@ function fireReminder(slot){
   showReminder(main, tail, "drink");
 }
 function fireSit(){ showReminder(fill(pick(activeLines("sit"))), "", "sit"); }
+function fireHabit(h, slot, nag){
+  const others = (data.settings.habits||[]).filter(o => o.id !== h.id && habitSlots(o).some(m => Math.abs(m - slot) <= MERGE));
+  let tail = others.length ? "還有：" + others.map(o => o.name).join("、") : "";
+  if (!nag && !tail && slots().some(m => Math.abs(m - slot) <= MERGE)) tail = "順便喝口水 💧";
+  else if (!nag && !tail && sitSlots().some(m => Math.abs(m - slot) <= MERGE)) tail = fill(pick(activeLines("sitTail")));
+  showReminder(hl(h, nag ? "overdue" : "remind"), tail, "habit-" + h.id);
+}
 // iPhone 會自動在標題下面加「from 喝水啦」，所以台詞直接當標題
 function showReminder(main, tail, tag){
   const line = tail ? main + "\n" + tail : main;
@@ -889,7 +1035,102 @@ function fillSettings(){
   $("#sitCustomBox").style.display = s.sitMode === "custom" ? "" : "none";
   renderTimeList("#sitTimesList", "sitTimes", 600);
   renderSitPreview();
-  renderTimes(); renderPreview(); renderPush(); fillRotNote();
+  renderTimes(); renderPreview(); renderPush(); fillRotNote(); renderHabitList();
+}
+function newHabitId(){ return "h" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function renderHabitList(){
+  const box = $("#habitList"), list = data.settings.habits || [];
+  box.innerHTML = "";
+  $("#addHabit").style.display = list.length >= MAX_HABITS ? "none" : "";
+  list.forEach((h, i) => {
+    const c = document.createElement("div");
+    c.className = "hcard";
+    c.innerHTML = `
+      <div class="head">
+        <input type="text" class="emoji" maxlength="2" value="${h.emoji || ""}" aria-label="圖示">
+        <input type="text" class="name" maxlength="10" placeholder="習慣名稱，例如 擦藥" value="${h.name || ""}">
+        <label class="switch"><input type="checkbox" ${h.on ? "checked" : ""}><span></span></label>
+      </div>
+      <div class="emojis">${EMOJIS.map(e => `<button type="button" data-e="${e}">${e}</button>`).join("")}</div>
+      <div class="row" style="display:block;border:0;padding-top:0">
+        <label>哪幾天</label>
+        <div class="days">${[1,2,3,4,5,6,0].map(d => `<button type="button" data-d="${d}" class="${(h.days||[]).includes(d) ? "on" : ""}">${"日一二三四五六"[d]}</button>`).join("")}</div>
+      </div>
+      <div class="times"></div>
+      <div class="preview"></div>
+      <div class="sample"></div>
+      <div class="foot"><button type="button" class="gen"></button><button type="button" class="del">刪除</button></div>`;
+    const after = () => { save(); fillSettings(); };
+    const nameInp = c.querySelector("input.name"), emojiInp = c.querySelector("input.emoji");
+    nameInp.addEventListener("input", e => { h.name = e.target.value.trim(); save(); });
+    nameInp.addEventListener("blur", () => { if (h.name && h.name !== h.linesFor) genLines(h, c); });   // 名稱改了就重寫台詞
+    emojiInp.addEventListener("input", e => { h.emoji = e.target.value.trim(); save(); render(); });
+    c.querySelector(".switch input").addEventListener("change", e => { h.on = e.target.checked; after(); });
+    c.querySelectorAll(".emojis button").forEach(b => b.addEventListener("click", () => { h.emoji = b.dataset.e; emojiInp.value = h.emoji; save(); render(); }));
+    c.querySelectorAll(".days button").forEach(b => b.addEventListener("click", () => {
+      const d = Number(b.dataset.d), cur = h.days || [];
+      h.days = cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort(); after();
+    }));
+    renderTimeListFor(c.querySelector(".times"), h.times, 1260, after);
+    // 預覽
+    const all = [...new Set((h.times||[]).map(toMin))].sort((a,b)=>a-b);
+    const pv = c.querySelector(".preview");
+    if (!h.on) pv.innerHTML = "暫停中，打開右上的開關就會提醒。";
+    else if (!(h.days||[]).length) pv.innerHTML = `<span class="warn">還沒選要哪幾天提醒。</span>`;
+    else if (!all.length) pv.innerHTML = `<span class="warn">還沒設定提醒時間。</span>`;
+    else {
+      const blocked = all.filter(m => isQuiet(m));
+      const names = [1,2,3,4,5,6,0].filter(d => h.days.includes(d)).map(d => "日一二三四五六"[d]);
+      pv.innerHTML = `${h.days.length === 7 ? "每天" : "每週" + names.join("、")} ${all.map(fmt).join("、")} 提醒，30 分鐘後還沒做會再催一次。`
+        + (blocked.length ? `<br><span class="warn">${blocked.map(fmt).join("、")} 落在勿擾時段，不會提醒。</span>` : "");
+    }
+    // 台詞
+    const sm = c.querySelector(".sample"), gen = c.querySelector(".gen");
+    const own = h.lines && h.lines.remind && h.lines.remind.length;
+    sm.innerHTML = own ? `<b>台詞範例：</b>${h.lines.remind.slice(0,2).map(t => fill(t.replace(/\{item\}/g, h.name))).join("　")}` : "還沒有專屬台詞，先用通用台詞。填好名稱後會自動請 AI 寫。";
+    gen.textContent = own ? "再寫一批台詞" : "請 AI 寫台詞";
+    gen.addEventListener("click", () => genLines(h, c));
+    c.querySelector(".del").addEventListener("click", () => {
+      if (!confirm(`刪除「${h.name || "這個習慣"}」？`)) return;
+      list.splice(i, 1); after(); render();
+    });
+    box.appendChild(c);
+  });
+}
+async function genLines(h, card){
+  if (!h.name){ alert("先填習慣名稱"); return; }
+  if (!pushReady()){ alert("還沒設定推播伺服器，沒辦法請 AI 寫台詞。"); return; }
+  const btn = card.querySelector(".gen"), sm = card.querySelector(".sample");
+  btn.disabled = true; btn.textContent = "AI 寫作中…"; sm.textContent = "大約要 10 秒，請稍等。";
+  try{
+    const r = await api("/lines", { id: deviceId(), name: h.name, plant: data.settings.plantName || "小芽" });
+    h.lines = { remind:r.remind || [], overdue:r.overdue || [], done:r.done || [] };
+    h.linesFor = h.name;
+    save(); fillSettings();
+  }catch(e){
+    btn.disabled = false; btn.textContent = "再試一次";
+    sm.textContent = "AI 這次沒寫出來（" + (e.message || e) + "），先用通用台詞，等一下再試。";
+  }
+}
+function renderTimeListFor(box, list, firstDefault, after){
+  box.innerHTML = "";
+  list.forEach((t,i) => {
+    const c = document.createElement("div");
+    c.className = "tchip";
+    c.innerHTML = `<input type="time" value="${t}" aria-label="提醒時間 ${i+1}"><button aria-label="刪除">×</button>`;
+    const inp = c.querySelector("input");
+    inp.dataset.saved = t;
+    bindTime(inp, v => { list[i] = v; list.sort(); after(); });
+    c.querySelector("button").addEventListener("click", () => { list.splice(i,1); after(); });
+    box.appendChild(c);
+  });
+  const add = document.createElement("button");
+  add.className = "addt"; add.textContent = "＋ 新增時間";
+  add.addEventListener("click", () => {
+    const last = list.length ? toMin(list.at(-1)) : firstDefault - 120;
+    list.push(fmt(Math.min(last + 120, 23*60))); after();
+  });
+  box.appendChild(add);
 }
 function renderTimes(){ renderTimeList("#timesList", "times", 480); }
 function renderTimeList(sel, key, firstDefault){
@@ -1006,6 +1247,14 @@ bindTime($("#sitStart"), v => set("sitStart", v));
 bindTime($("#sitEnd"), v => set("sitEnd", v));
 $("#plantName").addEventListener("input", e => { data.settings.plantName = e.target.value.trim() || "小芽"; save(); });
 $("#pushBtn").addEventListener("click", enablePush);
+$("#addHabit").addEventListener("click", () => {
+  const list = data.settings.habits = data.settings.habits || [];
+  if (list.length >= MAX_HABITS) return;
+  list.push({ id:newHabitId(), name:"", emoji:"📌", on:true, days:[0,1,2,3,4,5,6], times:["21:00"], lines:{remind:[],overdue:[],done:[]} });
+  save(); fillSettings();
+  const cards = document.querySelectorAll(".hcard"); const last = cards[cards.length-1];
+  last.scrollIntoView({ block:"center", behavior:"smooth" }); last.querySelector("input.name").focus();
+});
 $("#bannerHelpBtn").addEventListener("click", () => {
   const g = $("#bannerHelp"); g.hidden = !g.hidden;
   $("#bannerHelpBtn").textContent = g.hidden ? "怎麼設定" : "收起";
