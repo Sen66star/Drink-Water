@@ -1,6 +1,6 @@
 // 喝水啦 service worker：離線快取 + 伺服器推播 + 圖示紅點
-const CACHE = "hoshuila-v3";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png"];
+const CACHE = "hoshuila-v4";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png", "./lines.json"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));

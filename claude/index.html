@@ -121,8 +121,10 @@ input[type=text]{width:140px;text-align:right}
 .seg{display:flex;background:#eef4f9;border-radius:11px;padding:3px;margin:12px 0}
 .seg button{flex:1;padding:8px 0;border-radius:9px;font-weight:600;font-size:15px;color:var(--sub)}
 .seg button.on{background:#fff;color:var(--ink);box-shadow:0 1px 4px #0000001a}
-.switch{position:relative;width:51px;height:31px;flex:none}
+.switch{position:relative;display:block;width:51px;height:31px;flex:none;cursor:pointer}
 .switch input{opacity:0;width:0;height:0;position:absolute}
+.guide{margin-top:10px;padding:12px 14px;border-radius:12px;background:#eef6fc;color:#2c4a63;font-size:14px;line-height:1.7}
+.guide p{margin:0 0 4px}.guide ul,.guide ol{margin:0 0 8px;padding-left:22px}
 .switch span{position:absolute;inset:0;background:#d3dee7;border-radius:31px;transition:.2s}
 .switch span::after{content:"";position:absolute;left:2px;top:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 2px 4px #0003;transition:.2s}
 .switch input:checked+span{background:#34c759}
@@ -227,15 +229,37 @@ input[type=text]{width:140px;text-align:right}
     <div class="card">
       <div class="row">
         <label for="quietOn">開啟勿擾</label>
-        <span class="switch"><input type="checkbox" id="quietOn"><span></span></span>
+        <label class="switch"><input type="checkbox" id="quietOn"><span></span></label>
       </div>
       <div class="row" id="quietRow1"><label for="quietStart">開始</label><input type="time" id="quietStart"></div>
       <div class="row" id="quietRow2"><label for="quietEnd">結束</label><input type="time" id="quietEnd"></div>
     </div>
 
+    <div class="sec-title">通知停留方式</div>
+    <div class="card">
+      <div class="row">
+        <div><label>橫幅停留時間</label><div class="hint">想讓通知一直掛著，直到你點掉</div></div>
+        <button class="addt" id="bannerHelpBtn">怎麼設定</button>
+      </div>
+      <div class="guide" id="bannerHelp" hidden>
+        <p>通知停多久是 iPhone 系統決定的，網頁沒辦法指定秒數，只有兩種可以選：</p>
+        <ul>
+          <li><b>暫時</b>：大約 5 秒自動收起（預設）</li>
+          <li><b>持續</b>：不點掉就一直掛著，最能提醒你喝水 💧</li>
+        </ul>
+        <p>改成「持續」的方法：</p>
+        <ol>
+          <li>打開 iPhone 的「設定」</li>
+          <li>點「通知」，往下找到「喝水啦」</li>
+          <li>確認「橫幅」有勾選，再把「橫幅樣式」改成「持續」</li>
+        </ol>
+      </div>
+    </div>
+
     <div class="sec-title">我的植物</div>
     <div class="card">
       <div class="row"><label for="plantName">名字</label><input type="text" id="plantName" maxlength="8"></div>
+      <p class="note" id="rotNote"></p>
     </div>
 
     <div class="sec-title">讓 iPhone 準時叫你</div>
@@ -341,6 +365,30 @@ const LINES = {
   ],
   stageUp: "我長大了！{name} 變成「{stage}」了 🌿"
 };
+
+/* ---------- 嗆人台詞輪替（每兩週換一半，台詞放在 lines.json） ---------- */
+let POOL = null;
+const ROT_FALLBACK = { anchor:"2026-11-16", days:14 };
+function rotation(dayStr){
+  const r = POOL || ROT_FALLBACK;
+  const [y1,m1,d1] = r.anchor.split("-").map(Number), [y2,m2,d2] = dayStr.split("-").map(Number);
+  const diff = Math.round((Date.UTC(y2,m2-1,d2) - Date.UTC(y1,m1-1,d1)) / 86400000);
+  const period = Math.floor(diff / r.days);
+  const next = new Date(Date.UTC(y1,m1-1,d1) + (period + 1) * r.days * 86400000);
+  return { period, nextChange: `${next.getUTCMonth()+1}/${next.getUTCDate()}` };
+}
+function activeLines(cat){
+  const list = POOL && POOL[cat], half = POOL && POOL.half && POOL.half[cat];
+  if (!list || !half || list.length < half * 2) return (list && list.length) ? list : LINES[cat];
+  const k = Math.floor(list.length / half), p = rotation(dayKey()).period;
+  const i = ((p % k) + k) % k, j = (i + 1) % k;
+  return list.slice(i*half, i*half+half).concat(list.slice(j*half, j*half+half));
+}
+fetch("lines.json", { cache:"no-cache" }).then(r => r.json()).then(j => { POOL = j; fillRotNote(); }).catch(()=>{});
+function fillRotNote(){
+  const el = document.getElementById("rotNote");
+  if (el) el.textContent = `嗆人台詞每兩週換掉一半，下次換新：${rotation(dayKey()).nextChange}`;
+}
 
 const STAGES = [
   { name:"種子",   at:0 },
@@ -598,7 +646,7 @@ function say(text){
 function moodLine(){
   const m = mood();
   if (m === "sleepy") return pick(LINES.quiet);
-  if (m === "thirsty") return pick(LINES.overdue);
+  if (m === "thirsty") return pick(activeLines("overdue"));
   if (data.state.count >= goal() && goal() > 0) return pick(LINES.goal);
   if (slots().every(x => x <= nowMin())) return pick(LINES.allDone);
   return pick(LINES.idle);
@@ -703,7 +751,7 @@ function tick(){
   render();
 }
 function fireReminder(){
-  const line = fill(owe() > 1 ? pick(LINES.overdue) : pick(LINES.remind));
+  const line = fill(owe() > 1 ? pick(activeLines("overdue")) : pick(activeLines("remind")));
   say(line);
   const p = $("#plant"); p.classList.remove("ring"); void p.offsetWidth; p.classList.add("ring");
   $("#bannerText").textContent = line;
@@ -725,13 +773,14 @@ function fillSettings(){
   $("#intervalBox").style.display = s.mode === "interval" ? "" : "none";
   $("#customBox").style.display = s.mode === "custom" ? "" : "none";
   $("#interval").value = String(s.interval);
-  $("#startAt").value = s.startAt;
+  const tv = (id, v) => { const el = $(id); el.dataset.saved = v; if (document.activeElement !== el) el.value = v; };
+  tv("#startAt", s.startAt);
   $("#quietOn").checked = s.quietOn;
-  $("#quietStart").value = s.quietStart;
-  $("#quietEnd").value = s.quietEnd;
+  tv("#quietStart", s.quietStart);
+  tv("#quietEnd", s.quietEnd);
   $("#quietRow1").style.opacity = $("#quietRow2").style.opacity = s.quietOn ? 1 : .4;
   $("#plantName").value = s.plantName;
-  renderTimes(); renderPreview(); renderPush();
+  renderTimes(); renderPreview(); renderPush(); fillRotNote();
 }
 function renderTimes(){
   const box = $("#timesList");
@@ -740,10 +789,9 @@ function renderTimes(){
     const c = document.createElement("div");
     c.className = "tchip";
     c.innerHTML = `<input type="time" value="${t}" aria-label="提醒時間 ${i+1}"><button aria-label="刪除">×</button>`;
-    c.querySelector("input").addEventListener("change", e => {
-      if (!e.target.value) return;
-      data.settings.times[i] = e.target.value; data.settings.times.sort(); save(); renderTimes(); renderPreview();
-    });
+    const inp = c.querySelector("input");
+    inp.dataset.saved = t;
+    bindTime(inp, v => { data.settings.times[i] = v; data.settings.times.sort(); save(); renderTimes(); renderPreview(); });
     c.querySelector("button").addEventListener("click", () => {
       data.settings.times.splice(i,1); save(); renderTimes(); renderPreview();
     });
@@ -804,12 +852,20 @@ $("#openSettings").addEventListener("click", openSettings);
 $("#closeSettings").addEventListener("click", closeSettings);
 document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => set("mode", b.dataset.mode)));
 $("#interval").addEventListener("change", e => set("interval", Number(e.target.value)));
-$("#startAt").addEventListener("change", e => e.target.value && set("startAt", e.target.value));
+// 時間選擇器：iPhone 每轉一格都會觸發 change，所以改成按「完成」關掉選擇器（blur）才存
+function bindTime(el, commit){
+  el.addEventListener("blur", () => { if (el.value && el.value !== el.dataset.saved) commit(el.value); });
+}
+bindTime($("#startAt"), v => set("startAt", v));
 $("#quietOn").addEventListener("change", e => set("quietOn", e.target.checked));
-$("#quietStart").addEventListener("change", e => e.target.value && set("quietStart", e.target.value));
-$("#quietEnd").addEventListener("change", e => e.target.value && set("quietEnd", e.target.value));
+bindTime($("#quietStart"), v => set("quietStart", v));
+bindTime($("#quietEnd"), v => set("quietEnd", v));
 $("#plantName").addEventListener("input", e => { data.settings.plantName = e.target.value.trim() || "小芽"; save(); });
 $("#pushBtn").addEventListener("click", enablePush);
+$("#bannerHelpBtn").addEventListener("click", () => {
+  const g = $("#bannerHelp"); g.hidden = !g.hidden;
+  $("#bannerHelpBtn").textContent = g.hidden ? "怎麼設定" : "收起";
+});
 $("#pushOffBtn").addEventListener("click", disablePush);
 $("#testBtn").addEventListener("click", testPush);
 $("#resetToday").addEventListener("click", () => {
