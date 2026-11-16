@@ -137,6 +137,9 @@ input[type=text]{width:140px;text-align:right}
 .tchip{display:flex;align-items:center;background:#eef4f9;border-radius:10px;padding-right:4px}
 .tchip input{background:transparent;padding:6px 4px 6px 10px}
 .tchip button{width:26px;height:26px;border-radius:50%;color:var(--sub);font-size:18px;line-height:1}
+.days{display:flex;gap:6px;margin-top:10px}
+.days button{flex:1;height:38px;border-radius:10px;background:#eef4f9;color:var(--sub);font-weight:700;font-size:15px}
+.days button.on{background:var(--accent);color:#fff}
 .addt{background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:6px 12px;font-weight:700}
 .preview{font-size:13px;color:var(--sub);line-height:1.6;padding:12px 0}
 .preview b{color:var(--ink)}
@@ -247,6 +250,17 @@ input[type=text]{width:140px;text-align:right}
         <label class="switch"><input type="checkbox" id="sitOn"><span></span></label>
       </div>
       <div id="sitBox">
+        <div class="row" style="display:block">
+          <label>哪幾天提醒</label>
+          <div class="days" id="sitDays">
+            <button data-d="1">一</button><button data-d="2">二</button><button data-d="3">三</button><button data-d="4">四</button><button data-d="5">五</button><button data-d="6">六</button><button data-d="0">日</button>
+          </div>
+        </div>
+        <div class="seg" id="sitModeSeg">
+          <button data-mode="interval">固定間隔</button>
+          <button data-mode="custom">自訂時間點</button>
+        </div>
+        <div id="sitIntervalBox">
         <div class="row">
           <label for="sitInterval">每隔</label>
           <select id="sitInterval">
@@ -257,10 +271,8 @@ input[type=text]{width:140px;text-align:right}
         </div>
         <div class="row"><label for="sitStart">開始</label><input type="time" id="sitStart"></div>
         <div class="row"><label for="sitEnd">結束</label><input type="time" id="sitEnd"></div>
-        <div class="row">
-          <div><label for="sitWeekdays">只在平日提醒</label><div class="hint">週六、週日不吵你</div></div>
-          <label class="switch"><input type="checkbox" id="sitWeekdays"><span></span></label>
         </div>
+        <div id="sitCustomBox"><div class="times" id="sitTimesList"></div></div>
       </div>
       <div class="preview" id="sitPreview"></div>
     </div>
@@ -456,7 +468,8 @@ const DEFAULTS = {
   times:["08:30","10:30","12:30","15:00","17:00","19:30"],
   quietOn:true, quietStart:"22:30", quietEnd:"07:30",
   plantName:"小芽",
-  sitOn:false, sitInterval:60, sitStart:"09:00", sitEnd:"18:00", sitWeekdays:true
+  sitOn:false, sitMode:"interval", sitInterval:60, sitStart:"09:00", sitEnd:"18:00",
+  sitTimes:["10:00","11:30","14:00","15:30","17:00"], sitDays:[0,1,2,3,4,5,6]
 };
 const pad = n => String(n).padStart(2,"0");
 const toMin = t => { const [h,m] = t.split(":").map(Number); return h*60+m; };
@@ -470,9 +483,9 @@ function freshState(){ return { day:dayKey(), count:0, total:0, streak:0, lastFi
 function load(){
   try{
     const j = JSON.parse(localStorage.getItem(LS_KEY));
-    if (j) return { settings:{...DEFAULTS, ...j.settings}, state:{...freshState(), ...j.state} };
+    if (j) return { settings:{...structuredClone(DEFAULTS), ...j.settings}, state:{...freshState(), ...j.state} };
   }catch(e){}
-  return { settings:{...DEFAULTS}, state:freshState() };
+  return { settings:structuredClone(DEFAULTS), state:freshState() };
 }
 let data = load();
 function save(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){} syncSoon(); }
@@ -518,7 +531,8 @@ async function syncNow(keepalive){
       id: deviceId(), sub: sub.toJSON(),
       tz: Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Taipei",
       settings: { mode:s.mode, interval:s.interval, startAt:s.startAt, times:s.times, quietOn:s.quietOn, quietStart:s.quietStart, quietEnd:s.quietEnd, plantName:s.plantName,
-                  sitOn:s.sitOn, sitInterval:s.sitInterval, sitStart:s.sitStart, sitEnd:s.sitEnd, sitWeekdays:s.sitWeekdays },
+                  sitOn:s.sitOn, sitMode:s.sitMode, sitInterval:s.sitInterval, sitStart:s.sitStart, sitEnd:s.sitEnd,
+                  sitTimes:s.sitTimes, sitDays:s.sitDays },
       state: { day:st.day, count:st.count, lastDrink:st.lastDrink }
     }, keepalive);
   }catch(e){ console.warn("sync failed", e); }
@@ -596,11 +610,15 @@ const goal = () => slots().length;
 const MERGE = 10;   // 跟喝水提醒差 10 分鐘以內就合併成一則
 function sitSlots(s=data.settings, d=new Date()){
   if (!s.sitOn) return [];
-  if (s.sitWeekdays && (d.getDay() === 0 || d.getDay() === 6)) return [];
-  const a = toMin(s.sitStart), b = toMin(s.sitEnd), step = Math.max(15, Number(s.sitInterval)||60);
-  const list = [];
-  for (let m = a + step; m <= b; m += step) list.push(m);
-  return list.filter(m => !isQuiet(m, s));
+  if (!(s.sitDays || []).includes(d.getDay())) return [];
+  let list = [];
+  if (s.sitMode === "custom"){
+    list = (s.sitTimes || []).filter(Boolean).map(toMin);
+  } else {
+    const a = toMin(s.sitStart), b = toMin(s.sitEnd), step = Math.max(15, Number(s.sitInterval)||60);
+    for (let m = a + step; m <= b; m += step) list.push(m);
+  }
+  return [...new Set(list)].filter(m => !isQuiet(m, s)).sort((x,y) => x-y);
 }
 const sitMerged = (m, s=data.settings) => slots(s).some(w => Math.abs(w - m) <= MERGE);
 function standDue(){
@@ -863,30 +881,34 @@ function fillSettings(){
   $("#sitBox").style.opacity = s.sitOn ? 1 : .4;
   $("#sitInterval").value = String(s.sitInterval);
   tv("#sitStart", s.sitStart); tv("#sitEnd", s.sitEnd);
-  $("#sitWeekdays").checked = s.sitWeekdays;
+  document.querySelectorAll("#sitDays button").forEach(b => b.classList.toggle("on", (s.sitDays||[]).includes(Number(b.dataset.d))));
+  document.querySelectorAll("#sitModeSeg button").forEach(b => b.classList.toggle("on", b.dataset.mode === s.sitMode));
+  $("#sitIntervalBox").style.display = s.sitMode === "custom" ? "none" : "";
+  $("#sitCustomBox").style.display = s.sitMode === "custom" ? "" : "none";
+  renderTimeList("#sitTimesList", "sitTimes", 600);
   renderSitPreview();
   renderTimes(); renderPreview(); renderPush(); fillRotNote();
 }
-function renderTimes(){
-  const box = $("#timesList");
+function renderTimes(){ renderTimeList("#timesList", "times", 480); }
+function renderTimeList(sel, key, firstDefault){
+  const box = $(sel), list = data.settings[key];
   box.innerHTML = "";
-  data.settings.times.forEach((t,i) => {
+  const after = () => { save(); renderTimeList(sel, key, firstDefault); renderPreview(); };
+  list.forEach((t,i) => {
     const c = document.createElement("div");
     c.className = "tchip";
     c.innerHTML = `<input type="time" value="${t}" aria-label="提醒時間 ${i+1}"><button aria-label="刪除">×</button>`;
     const inp = c.querySelector("input");
     inp.dataset.saved = t;
-    bindTime(inp, v => { data.settings.times[i] = v; data.settings.times.sort(); save(); renderTimes(); renderPreview(); });
-    c.querySelector("button").addEventListener("click", () => {
-      data.settings.times.splice(i,1); save(); renderTimes(); renderPreview();
-    });
+    bindTime(inp, v => { list[i] = v; list.sort(); after(); });
+    c.querySelector("button").addEventListener("click", () => { list.splice(i,1); after(); });
     box.appendChild(c);
   });
   const add = document.createElement("button");
   add.className = "addt"; add.textContent = "＋ 新增時間";
   add.addEventListener("click", () => {
-    const last = data.settings.times.length ? toMin(data.settings.times.at(-1)) : 480;
-    data.settings.times.push(fmt(Math.min(last + 120, 23*60))); save(); renderTimes(); renderPreview();
+    const last = list.length ? toMin(list.at(-1)) : firstDefault - 120;
+    list.push(fmt(Math.min(last + 120, 23*60))); after();
   });
   box.appendChild(add);
 }
@@ -905,13 +927,19 @@ function renderPreview(){
 function renderSitPreview(){
   const s = data.settings, el = $("#sitPreview");
   if (!s.sitOn) { el.innerHTML = "關閉中。打開後，坐太久我會叫你起來動一動。"; return; }
-  if (toMin(s.sitEnd) <= toMin(s.sitStart)) { el.innerHTML = `<span class="warn">結束時間要比開始時間晚喔。</span>`; return; }
-  const d = new Date(), weekend = d.getDay() === 0 || d.getDay() === 6;
-  const all = sitSlots(s, weekend ? new Date(d.getTime() + (d.getDay() === 6 ? 2 : 1) * 86400000) : d);
-  if (!all.length) { el.innerHTML = `<span class="warn">這個時段排不進任何提醒，換個設定試試看。</span>`; return; }
+  const days = s.sitDays || [];
+  if (!days.length) { el.innerHTML = `<span class="warn">還沒選要哪幾天提醒，點上面的星期幾。</span>`; return; }
+  if (s.sitMode !== "custom" && toMin(s.sitEnd) <= toMin(s.sitStart)) { el.innerHTML = `<span class="warn">結束時間要比開始時間晚喔。</span>`; return; }
+  const all = sitSlots({ ...s, sitDays:[0,1,2,3,4,5,6] });
+  if (!all.length) { el.innerHTML = `<span class="warn">目前排不進任何提醒，換個設定試試看。</span>`; return; }
   const merged = all.filter(m => sitMerged(m, s));
-  let html = `${weekend && s.sitWeekdays ? "今天是週末不提醒，平日" : "每天"}會提醒 <b>${all.length}</b> 次：<br>${all.map(fmt).join("、")}`;
+  const names = [1,2,3,4,5,6,0].filter(d => days.includes(d)).map(d => "日一二三四五六"[d]);
+  const which = days.length === 7 ? "每天" : `每週${names.join("、")}`;
+  const today = days.includes(new Date().getDay()) ? "" : "（今天不提醒）";
+  let html = `${which}會提醒 <b>${all.length}</b> 次${today}：<br>${all.map(fmt).join("、")}`;
   if (merged.length) html += `<br>其中 ${merged.map(fmt).join("、")} 跟喝水提醒很接近，會合併成一則。`;
+  const blocked = s.sitMode === "custom" ? (s.sitTimes||[]).filter(t => isQuiet(toMin(t), s)) : [];
+  if (blocked.length) html += `<br><span class="warn">${blocked.join("、")} 落在勿擾時段，不會提醒。</span>`;
   el.innerHTML = html;
 }
 function set(k, v){ data.settings[k] = v; save(); fillSettings(); }
@@ -966,7 +994,11 @@ $("#quietOn").addEventListener("change", e => set("quietOn", e.target.checked));
 bindTime($("#quietStart"), v => set("quietStart", v));
 bindTime($("#quietEnd"), v => set("quietEnd", v));
 $("#sitOn").addEventListener("change", e => set("sitOn", e.target.checked));
-$("#sitWeekdays").addEventListener("change", e => set("sitWeekdays", e.target.checked));
+document.querySelectorAll("#sitDays button").forEach(b => b.addEventListener("click", () => {
+  const d = Number(b.dataset.d), cur = data.settings.sitDays || [];
+  set("sitDays", cur.includes(d) ? cur.filter(x => x !== d) : [...cur, d].sort());
+}));
+document.querySelectorAll("#sitModeSeg button").forEach(b => b.addEventListener("click", () => set("sitMode", b.dataset.mode)));
 $("#sitInterval").addEventListener("change", e => set("sitInterval", Number(e.target.value)));
 bindTime($("#sitStart"), v => set("sitStart", v));
 bindTime($("#sitEnd"), v => set("sitEnd", v));
@@ -984,7 +1016,7 @@ $("#resetToday").addEventListener("click", () => {
 });
 $("#resetAll").addEventListener("click", () => {
   if (!confirm("全部重來會清掉植物成長和連續天數，確定嗎？")) return;
-  data = { settings:{...DEFAULTS}, state:freshState() }; save(); closeSettings();
+  data = { settings:structuredClone(DEFAULTS), state:freshState() }; save(); closeSettings();
   say("我又變回種子了…這次要好好照顧我喔。");
 });
 document.addEventListener("visibilitychange", () => {

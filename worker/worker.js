@@ -108,11 +108,15 @@ function slots(s) {
 const MERGE = 10;   // 跟喝水提醒差 10 分鐘以內就合併成一則
 function sitSlots(s, now) {
   if (!s.sitOn) return [];
-  if (s.sitWeekdays && (now.wd === 0 || now.wd === 6)) return [];
-  const a = toMin(s.sitStart || "09:00"), b = toMin(s.sitEnd || "18:00"), step = Math.max(15, Number(s.sitInterval) || 60);
-  const list = [];
-  for (let m = a + step; m <= b; m += step) list.push(m);
-  return list.filter(m => !isQuiet(m, s));
+  if (!(s.sitDays || []).includes(now.wd)) return [];
+  let list = [];
+  if (s.sitMode === "custom") {
+    list = (s.sitTimes || []).filter(Boolean).map(toMin);
+  } else {
+    const a = toMin(s.sitStart || "09:00"), b = toMin(s.sitEnd || "18:00"), step = Math.max(15, Number(s.sitInterval) || 60);
+    for (let m = a + step; m <= b; m += step) list.push(m);
+  }
+  return [...new Set(list)].filter(m => Number.isFinite(m) && !isQuiet(m, s)).sort((x, y) => x - y);
 }
 function localNow(tz) {
   let f;
@@ -314,7 +318,9 @@ function cleanSettings(s = {}) {
     sitInterval: Math.min(240, Math.max(15, Number(s.sitInterval) || 60)),
     sitStart: t(s.sitStart) || "09:00",
     sitEnd: t(s.sitEnd) || "18:00",
-    sitWeekdays: s.sitWeekdays !== false
+    sitMode: s.sitMode === "custom" ? "custom" : "interval",
+    sitTimes: (Array.isArray(s.sitTimes) ? s.sitTimes : []).map(t).filter(Boolean).slice(0, 48),
+    sitDays: (Array.isArray(s.sitDays) ? s.sitDays : [0, 1, 2, 3, 4, 5, 6]).map(Number).filter(d => d >= 0 && d <= 6)
   };
 }
 
