@@ -351,7 +351,7 @@ async function runSchedule(env) {
 }
 
 /* ================== AI 寫台詞（Cloudflare Workers AI） ================== */
-const AI_MODELS = ["@cf/qwen/qwen3-30b-a3b-fp8", "@cf/meta/llama-3.3-70b-instruct-fp8-fast"];
+const AI_MODELS = ["@cf/qwen/qwen3-30b-a3b-fp8", "@cf/meta/llama-3.3-70b-instruct-fp8-fast", "@cf/mistralai/mistral-small-3.1-24b-instruct"];
 function aiPrompt(name, plant) {
   return `你是一盆會說話的小植物，名字叫「${plant}」，住在一個養成習慣的手機 App 裡，個性俏皮、愛鬧、會嗆人但不刻薄，像好朋友一樣催主人。
 主人想養成的習慣是：「${name}」。
@@ -376,28 +376,41 @@ function cleanLines(arr, min, max) {
     .slice(0, max);
 }
 function extractJSON(text) {
-  const t = String(text).replace(/<think>[\s\S]*?<\/think>/g, "");
+  if (text && typeof text === "object") return text;   // 有些模型會直接回傳已解析的物件
+  const t = String(text).replace(/<think>[\s\S]*?<\/think>/g, "").replace(/```(?:json)?/g, "");
   const a = t.indexOf("{"), b = t.lastIndexOf("}");
-  if (a < 0 || b <= a) throw new Error("no json");
+  if (a < 0 || b <= a) throw new Error("沒有 JSON：" + t.slice(0, 80));
   return JSON.parse(t.slice(a, b + 1));
 }
+function aiText(r) {
+  if (r == null) return "";
+  if (typeof r === "string") return r;
+  if (r.response != null) return r.response;
+  const c = r.choices && r.choices[0];
+  if (c) return (c.message && (c.message.content || c.message.reasoning_content)) || c.text || "";
+  if (r.result) return aiText(r.result);
+  return r;
+}
 async function generateLines(env, name, plant) {
-  let lastErr = null;
+  const errs = [];
   for (const model of AI_MODELS) {
     try {
       const messages = [
         { role: "system", content: "你只會輸出 JSON。/no_think" },
         { role: "user", content: aiPrompt(name, plant) }
       ];
-      const r = await env.AI.run(model, { messages, max_tokens: 1200, temperature: 0.9 });
-      const text = typeof r === "string" ? r : (r.response ?? (r.choices && r.choices[0] && r.choices[0].message && r.choices[0].message.content) ?? "");
-      const j = extractJSON(text);
+      const r = await env.AI.run(model, { messages, max_tokens: 2500, temperature: 0.9 });
+      const j = extractJSON(aiText(r));
       const out = { remind: cleanLines(j.remind, 6, 12), overdue: cleanLines(j.overdue, 3, 6), done: cleanLines(j.done, 3, 6), model };
-      if (out.remind.length < 6 || out.overdue.length < 3 || out.done.length < 3) throw new Error("too few lines from " + model);
+      if (out.remind.length < 6 || out.overdue.length < 3 || out.done.length < 3)
+        throw new Error(`句子太少（${out.remind.length}/${out.overdue.length}/${out.done.length}）`);
       return out;
-    } catch (e) { lastErr = e; console.log("AI model failed", model, e && e.message); }
+    } catch (e) {
+      const msg = `${model.split("/").pop()}：${String(e && e.message || e).slice(0, 160)}`;
+      errs.push(msg); console.log("AI model failed", msg);
+    }
   }
-  throw lastErr || new Error("AI failed");
+  const err = new Error("AI failed"); err.detail = errs; throw err;
 }
 
 /* ================== API ================== */
@@ -499,8 +512,8 @@ async function handle(req, env) {
       const lines = await generateLines(env, name, plant);
       return json(lines, 200, h);
     } catch (e) {
-      console.log("AI failed", e && e.message);
-      return json({ error: "AI 暫時沒回應" }, 502, h);
+      console.log("AI failed", e && e.message, e && e.detail);
+      return json({ error: "AI 暫時沒回應", detail: e && e.detail }, 502, h);
     }
   }
 
