@@ -139,7 +139,8 @@ function sitSlots(s, now) {
 const NAG = 30;   // 時間到 30 分鐘後還沒做，再催一次
 function habitSlots(h, s, now) {
   if (!h.on || !(h.days || []).includes(now.wd)) return [];
-  return [...new Set((h.times || []).filter(Boolean).map(toMin))].filter(m => Number.isFinite(m) && !isQuiet(m, s)).sort((a, b) => a - b);
+  // 家人設的提醒（有 from）是特別挑的時間，不受勿擾時段影響
+  return [...new Set((h.times || []).filter(Boolean).map(toMin))].filter(m => Number.isFinite(m) && (h.from || !isQuiet(m, s))).sort((a, b) => a - b);
 }
 const habitAt = (s, now, m) => (s.habits || []).some(h => habitSlots(h, s, now).some(x => Math.abs(x - m) <= MERGE));
 function localNow(tz) {
@@ -244,6 +245,14 @@ async function ensureTable(env) {
   try { await env.DB.prepare("ALTER TABLE subs ADD COLUMN last_sit TEXT NOT NULL DEFAULT ''").run(); } catch (e) {}   // 舊資料表補欄位
   try { await env.DB.prepare("ALTER TABLE subs ADD COLUMN last_habit TEXT NOT NULL DEFAULT ''").run(); } catch (e) {}
   await env.DB.prepare("CREATE TABLE IF NOT EXISTS gen_quota (id TEXT PRIMARY KEY, day TEXT NOT NULL, n INTEGER NOT NULL)").run();
+  // 家園
+  await env.DB.batch([
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS fam_users (id TEXT PRIMARY KEY, name TEXT NOT NULL, summary TEXT NOT NULL DEFAULT '21:30', last_summary TEXT NOT NULL DEFAULT '', created INTEGER NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, from_id TEXT NOT NULL, type TEXT NOT NULL, created INTEGER NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS links (id TEXT PRIMARY KEY, a TEXT NOT NULL, b TEXT NOT NULL, type TEXT NOT NULL, nick_a TEXT NOT NULL DEFAULT '', nick_b TEXT NOT NULL DEFAULT '', poke_a INTEGER NOT NULL DEFAULT 0, poke_b INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS assigned (id TEXT PRIMARY KEY, link TEXT NOT NULL, from_id TEXT NOT NULL, to_id TEXT NOT NULL, habit TEXT NOT NULL, paused INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS donelog (hid TEXT NOT NULL, day TEXT NOT NULL, done TEXT NOT NULL, PRIMARY KEY (hid, day))")
+  ]);
   tableReady = true;
 }
 
@@ -273,11 +282,17 @@ async function runSchedule(env) {
   const { results } = await env.DB.prepare("SELECT * FROM subs").all();
   const updates = [];
   const pool = results.length ? await getPool() : null;
+  const fam = results.length ? await loadFamily(env) : null;
+  const rowsById = Object.fromEntries(results.map(r => [r.id, r]));
   await Promise.all(results.map(async row => {
     try {
       const s = JSON.parse(row.settings), st = JSON.parse(row.state), sub = JSON.parse(row.sub);
       const now = localNow(row.tz);
+      // 家人幫我設的提醒，跟自己的習慣一起排
+      const mine = (fam.byTo[row.id] || []).filter(a => !a.paused);
+      if (mine.length) s.habits = [...(s.habits || []), ...mine.map(a => ({ ...a.habit, id: a.id, on: true, from: fam.nickFor(a.link, row.id) }))];
       const water = slots(s), sits = sitSlots(s, now);
+      const fill = t => String(t).replace(/\{name\}/g, s.plantName || "小芽");
       const recent = Date.now() - (Number(st.lastDrink) || 0) < 15 * 60 * 1000;   // 剛喝過就不吵
       const send = async msg => {
         const res = await sendPush(sub, msg, env);
@@ -304,6 +319,7 @@ async function runSchedule(env) {
               let tail = others.length ? "還有：" + others.map(o => o.name).join("、") : "";
               if (!tail && water.some(x => Math.abs(x - m) <= MERGE)) tail = "順便喝口水 💧";
               else if (!tail && sits.some(x => Math.abs(x - m) <= MERGE)) tail = fill(pick(activeLines(pool, "sitTail", now.day)));
+              else if (!tail && h.from) tail = `${h.from}幫你設的提醒`;
               await send(buildMessage(row, s, st, now, "habit", pool, { h, tail }));
             }
           }
@@ -341,6 +357,16 @@ async function runSchedule(env) {
         if (row.last_sit !== key && now.min - last <= 5) {
           updates.push(env.DB.prepare("UPDATE subs SET last_sit = ? WHERE id = ?").bind(key, row.id));
           if (!water.some(m => Math.abs(m - last) <= MERGE) && !habitAt(s, now, last)) await send(buildMessage(row, s, st, now, "sit", pool));
+        }
+      }
+      // 家園：晚上摘要（只有家人還沒做完才送）
+      const me = fam.users[row.id];
+      if (me && me.last_summary !== now.day) {
+        const at = toMin(me.summary || "21:30");
+        if (now.min >= at && now.min - at <= 5) {
+          updates.push(env.DB.prepare("UPDATE fam_users SET last_summary = ? WHERE id = ?").bind(now.day, row.id));
+          const lines = familySummary(fam, rowsById, row.id);
+          if (lines.length) await send({ title: "家人今天還沒做完 🌱", body: lines.join("\n"), tag: "fam-summary" });
         }
       }
     } catch (e) {
@@ -438,6 +464,260 @@ async function generateLines(env, name, plant) {
   const err = new Error("AI failed"); err.detail = errs; throw err;
 }
 
+/* ================== 家園（家人提醒） ================== */
+const FAM_MAX = 5, ASSIGN_MAX = 6;
+const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const rid = (n, chars = "abcdefghijkmnpqrstuvwxyz23456789") => Array.from(crypto.getRandomValues(new Uint8Array(n)), x => chars[x % chars.length]).join("");
+function cleanHabit(h) {
+  const t = v => (typeof v === "string" && /^\d{2}:\d{2}$/.test(v) ? v : null);
+  return {
+    name: String(h.name || "").trim().slice(0, 10),
+    emoji: String(h.emoji || "").slice(0, 4),
+    days: (Array.isArray(h.days) ? h.days : []).map(Number).filter(d => d >= 0 && d <= 6),
+    times: (Array.isArray(h.times) ? h.times : []).map(t).filter(Boolean).slice(0, 6),
+    lines: Object.fromEntries(["remind", "overdue", "done"].map(c => [c, (h.lines && Array.isArray(h.lines[c]) ? h.lines[c] : []).map(x => String(x).slice(0, 60)).slice(0, 20)]))
+  };
+}
+// 誰能看、能管：互相照顧兩邊都可以；我照顧你只有 a（邀請的人）可以
+const canManage = (l, me) => l.type === "mutual" || l.a === me;
+const otherOf = (l, me) => (l.a === me ? l.b : l.a);
+const myNickFor = (l, me) => (l.a === me ? l.nick_a : l.nick_b);   // 我怎麼稱呼對方
+
+async function loadFamily(env) {
+  const [u, l, a] = await env.DB.batch([
+    env.DB.prepare("SELECT * FROM fam_users"),
+    env.DB.prepare("SELECT * FROM links"),
+    env.DB.prepare("SELECT * FROM assigned")
+  ]);
+  const users = Object.fromEntries((u.results || []).map(x => [x.id, x]));
+  const links = Object.fromEntries((l.results || []).map(x => [x.id, x]));
+  const byTo = {}, byFrom = {};
+  for (const x of a.results || []) {
+    let habit = {}; try { habit = JSON.parse(x.habit); } catch (e) {}
+    const item = { id: x.id, link: x.link, from: x.from_id, to: x.to_id, paused: !!x.paused, created: x.created, habit };
+    (byTo[x.to_id] = byTo[x.to_id] || []).push(item);
+    (byFrom[x.from_id] = byFrom[x.from_id] || []).push(item);
+  }
+  // 收到提醒的人怎麼稱呼設提醒的人：先用他取的暱稱，沒有就用對方自己的名字
+  const nickFor = (linkId, me) => {
+    const lk = links[linkId]; if (!lk) return "家人";
+    const other = otherOf(lk, me);
+    return myNickFor(lk, me) || (users[other] && users[other].name) || "家人";
+  };
+  return { users, links, byTo, byFrom, nickFor };
+}
+function habitDueToday(habit, row, now) {
+  if (!(habit.days || []).includes(now.wd)) return [];
+  return [...new Set((habit.times || []).map(toMin))].filter(m => m <= now.min).sort((x, y) => x - y);
+}
+function doneToday(row, hid, day) {
+  let st = {}; try { st = JSON.parse(row.state); } catch (e) {}
+  return ((st.habitDone || {})[hid] || []).filter(k => k.startsWith(day)).map(k => Number(k.slice(11)));
+}
+function familySummary(fam, rowsById, me) {
+  const out = {};
+  for (const a of fam.byFrom[me] || []) {
+    const lk = fam.links[a.link]; if (!lk || a.paused || !canManage(lk, me)) continue;
+    const row = rowsById[a.to]; if (!row) continue;
+    const now = localNow(row.tz);
+    const due = habitDueToday(a.habit, row, now), done = doneToday(row, a.id, now.day);
+    if (due.some(m => !done.includes(m))) {
+      const who = myNickFor(lk, me) || (fam.users[a.to] && fam.users[a.to].name) || "家人";
+      (out[who] = out[who] || []).push(a.habit.name);
+    }
+  }
+  return Object.entries(out).map(([who, list]) => `${who}：${list.join("、")}`);
+}
+async function logAssignedDone(env, id, hd) {
+  const ids = Object.keys(hd).filter(k => k.startsWith("f"));
+  if (!ids.length) return;
+  const { results } = await env.DB.prepare(`SELECT id FROM assigned WHERE to_id = ? AND id IN (${ids.map(() => "?").join(",")})`).bind(id, ...ids).all();
+  const ops = [];
+  for (const { id: hid } of results || []) {
+    const byDay = {};
+    for (const k of hd[hid] || []) { const day = k.slice(0, 10), m = Number(k.slice(11)); if (/^\d{4}-\d{2}-\d{2}$/.test(day) && Number.isFinite(m)) (byDay[day] = byDay[day] || []).push(m); }
+    for (const [day, list] of Object.entries(byDay))
+      ops.push(env.DB.prepare("INSERT INTO donelog (hid, day, done) VALUES (?1, ?2, ?3) ON CONFLICT(hid, day) DO UPDATE SET done = ?3").bind(hid, day, JSON.stringify([...new Set(list)])));
+  }
+  if (ops.length) await env.DB.batch(ops);
+}
+function plantOf(row) {
+  if (!row) return null;
+  let s = {}, st = {};
+  try { s = JSON.parse(row.settings); st = JSON.parse(row.state); } catch (e) {}
+  const now = localNow(row.tz);
+  const past = slots(s).filter(m => m <= now.min).length;
+  const count = st.day === now.day ? (Number(st.count) || 0) : 0;
+  return { total: Number(st.total) || 0, owe: Math.max(0, past - count), plantName: s.plantName || "小芽" };
+}
+
+async function familyApi(action, b, env, h) {
+  const me = b.id;
+  const now = Date.now();
+  const user = me ? await env.DB.prepare("SELECT * FROM fam_users WHERE id = ?").bind(me).first() : null;
+  const linkOf = async lid => {
+    const l = await env.DB.prepare("SELECT * FROM links WHERE id = ?").bind(String(lid || "")).first();
+    return l && (l.a === me || l.b === me) ? l : null;
+  };
+
+  if (action === "peek") {   // 落地頁：顯示誰邀請你
+    const inv = await env.DB.prepare("SELECT * FROM invites WHERE code = ?").bind(String(b.code || "").toUpperCase()).first();
+    if (!inv || now - inv.created > 7 * 86400000) return json({ error: "邀請碼不存在或已過期" }, 404, h);
+    const from = await env.DB.prepare("SELECT name FROM fam_users WHERE id = ?").bind(inv.from_id).first();
+    return json({ fromName: from ? from.name : "家人", type: inv.type }, 200, h);
+  }
+
+  if (action === "profile") {
+    const name = String(b.name || "").trim().slice(0, 10);
+    if (!name && !user) return json({ error: "請先填你的名字" }, 400, h);
+    const summary = /^\d{2}:\d{2}$/.test(b.summary || "") ? b.summary : (user ? user.summary : "21:30");
+    await env.DB.prepare(`INSERT INTO fam_users (id, name, summary, created) VALUES (?1, ?2, ?3, ?4)
+      ON CONFLICT(id) DO UPDATE SET name = CASE WHEN ?2 = '' THEN name ELSE ?2 END, summary = ?3`).bind(me, name, summary, now).run();
+    return json({ ok: true }, 200, h);
+  }
+
+  if (!user) return json({ error: "請先填你的名字", needName: true }, 400, h);
+
+  if (action === "state") {
+    const fam = await loadFamily(env);
+    const mineLinks = Object.values(fam.links).filter(l => l.a === me || l.b === me);
+    const otherIds = mineLinks.map(l => otherOf(l, me));
+    const rows = otherIds.length ? (await env.DB.prepare(`SELECT * FROM subs WHERE id IN (${otherIds.map(() => "?").join(",")})`).bind(...otherIds).all()).results || [] : [];
+    const rowsById = Object.fromEntries(rows.map(r => [r.id, r]));
+    // 近 7 天的完成紀錄
+    const ids = (fam.byFrom[me] || []).map(a => a.id);
+    const logs = ids.length ? (await env.DB.prepare(`SELECT * FROM donelog WHERE hid IN (${ids.map(() => "?").join(",")})`).bind(...ids).all()).results || [] : [];
+    const logBy = {};
+    for (const x of logs) { try { (logBy[x.hid] = logBy[x.hid] || {})[x.day] = JSON.parse(x.done); } catch (e) {} }
+    const family = mineLinks.map(l => {
+      const other = otherOf(l, me), manage = canManage(l, me), row = rowsById[other];
+      const role = l.type === "mutual" ? "mutual" : (l.a === me ? "carer" : "cared");
+      const lastPoke = l.a === me ? l.poke_a : l.poke_b;
+      return {
+        link: l.id, role, nick: myNickFor(l, me), name: (fam.users[other] && fam.users[other].name) || "家人",
+        push: !!row,
+        plant: manage ? plantOf(row) : null,
+        today: row ? localNow(row.tz).day : null,
+        pokeWait: Math.max(0, Math.ceil((lastPoke + 3600000 - now) / 1000)),
+        assigned: manage ? (fam.byFrom[me] || []).filter(a => a.link === l.id).map(a => {
+          const log = { ...(logBy[a.id] || {}) };
+          if (row) { const d = localNow(row.tz).day; log[d] = doneToday(row, a.id, d); }
+          return { id: a.id, paused: a.paused, created: a.created, ...a.habit, log };
+        }) : []
+      };
+    });
+    const forMe = (fam.byTo[me] || []).map(a => ({ id: a.id, paused: a.paused, from: fam.nickFor(a.link, me), link: a.link, ...a.habit }));
+    return json({ me: { name: user.name, summary: user.summary }, family, forMe }, 200, h);
+  }
+
+  if (action === "invite") {
+    const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM links WHERE a = ?1 OR b = ?1").bind(me).first()).n;
+    if (n >= FAM_MAX) return json({ error: `最多只能連結 ${FAM_MAX} 位家人` }, 400, h);
+    await env.DB.prepare("DELETE FROM invites WHERE created < ?").bind(now - 7 * 86400000).run();
+    const code = rid(6, CODE_CHARS);
+    await env.DB.prepare("INSERT INTO invites (code, from_id, type, created) VALUES (?, ?, ?, ?)").bind(code, me, b.type === "care" ? "care" : "mutual", now).run();
+    return json({ code }, 200, h);
+  }
+
+  if (action === "accept") {
+    const code = String(b.code || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const inv = await env.DB.prepare("SELECT * FROM invites WHERE code = ?").bind(code).first();
+    if (!inv || now - inv.created > 7 * 86400000) return json({ error: "邀請碼不存在或已過期" }, 404, h);
+    if (inv.from_id === me) return json({ error: "這是你自己發出的邀請喔" }, 400, h);
+    const dup = await env.DB.prepare("SELECT id FROM links WHERE (a = ?1 AND b = ?2) OR (a = ?2 AND b = ?1)").bind(inv.from_id, me).first();
+    if (dup) { await env.DB.prepare("DELETE FROM invites WHERE code = ?").bind(code).run(); return json({ error: "你們已經是家人了" }, 400, h); }
+    for (const who of [me, inv.from_id]) {
+      const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM links WHERE a = ?1 OR b = ?1").bind(who).first()).n;
+      if (n >= FAM_MAX) return json({ error: who === me ? `你已經有 ${FAM_MAX} 位家人了` : `對方已經有 ${FAM_MAX} 位家人了` }, 400, h);
+    }
+    const lid = "l" + rid(12);
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO links (id, a, b, type, nick_a, nick_b, created) VALUES (?, ?, ?, ?, '', ?, ?)").bind(lid, inv.from_id, me, inv.type, String(b.nick || "").trim().slice(0, 10), now),
+      env.DB.prepare("DELETE FROM invites WHERE code = ?").bind(code)
+    ]);
+    // 通知邀請的人
+    const row = await env.DB.prepare("SELECT * FROM subs WHERE id = ?").bind(inv.from_id).first();
+    if (row) await sendPush(JSON.parse(row.sub), { title: `${user.name} 接受了你的邀請 🌱`, body: "到家園幫他取個暱稱吧", tag: "fam" }, env).catch(() => {});
+    return json({ ok: true, link: lid }, 200, h);
+  }
+
+  const l = await linkOf(b.link);
+
+  if (action === "nick") {
+    if (!l) return json({ error: "找不到這位家人" }, 404, h);
+    const col = l.a === me ? "nick_a" : "nick_b";
+    await env.DB.prepare(`UPDATE links SET ${col} = ? WHERE id = ?`).bind(String(b.nick || "").trim().slice(0, 10), l.id).run();
+    return json({ ok: true }, 200, h);
+  }
+
+  if (action === "unlink") {
+    if (!l) return json({ error: "找不到這位家人" }, 404, h);
+    await env.DB.batch([
+      env.DB.prepare("DELETE FROM donelog WHERE hid IN (SELECT id FROM assigned WHERE link = ?)").bind(l.id),
+      env.DB.prepare("DELETE FROM assigned WHERE link = ?").bind(l.id),
+      env.DB.prepare("DELETE FROM links WHERE id = ?").bind(l.id)
+    ]);
+    return json({ ok: true }, 200, h);
+  }
+
+  if (action === "assign") {
+    if (!l || !canManage(l, me)) return json({ error: "你不能幫這位家人設提醒" }, 403, h);
+    const to = otherOf(l, me);
+    const habit = cleanHabit(b.habit || {});
+    if (!habit.name || !habit.days.length || !habit.times.length) return json({ error: "名稱、哪幾天、時間都要填" }, 400, h);
+    const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM assigned WHERE to_id = ?").bind(to).first()).n;
+    if (n >= ASSIGN_MAX) return json({ error: `一個人最多被設 ${ASSIGN_MAX} 個提醒` }, 400, h);
+    const id = "f" + rid(10);
+    await env.DB.prepare("INSERT INTO assigned (id, link, from_id, to_id, habit, created) VALUES (?, ?, ?, ?, ?, ?)").bind(id, l.id, me, to, JSON.stringify(habit), now).run();
+    const row = await env.DB.prepare("SELECT * FROM subs WHERE id = ?").bind(to).first();
+    if (row) {
+      const fam = await loadFamily(env);
+      await sendPush(JSON.parse(row.sub), { title: `${fam.nickFor(l.id, to)}幫你設了提醒：${habit.emoji ? habit.emoji + " " : ""}${habit.name}`, body: "打開喝水啦就看得到", tag: "fam" }, env).catch(() => {});
+    }
+    return json({ ok: true, id }, 200, h);
+  }
+
+  if (action === "unassign" || action === "pause") {
+    const a = await env.DB.prepare("SELECT * FROM assigned WHERE id = ?").bind(String(b.habitId || "")).first();
+    if (!a) return json({ error: "找不到這個提醒" }, 404, h);
+    if (action === "unassign") {
+      if (a.from_id !== me) return json({ error: "只有設這個提醒的人可以刪除" }, 403, h);
+      await env.DB.batch([env.DB.prepare("DELETE FROM assigned WHERE id = ?").bind(a.id), env.DB.prepare("DELETE FROM donelog WHERE hid = ?").bind(a.id)]);
+    } else {
+      if (a.to_id !== me) return json({ error: "只有收到提醒的人可以暫停" }, 403, h);
+      await env.DB.prepare("UPDATE assigned SET paused = ? WHERE id = ?").bind(b.paused ? 1 : 0, a.id).run();
+    }
+    return json({ ok: true }, 200, h);
+  }
+
+  if (action === "poke") {
+    if (!l || !canManage(l, me)) return json({ error: "你不能戳這位家人" }, 403, h);
+    const col = l.a === me ? "poke_a" : "poke_b";
+    const wait = l[col] + 3600000 - now;
+    if (wait > 0) return json({ error: `剛戳過了，${Math.ceil(wait / 60000)} 分鐘後再戳`, wait: Math.ceil(wait / 1000) }, 429, h);
+    const to = otherOf(l, me);
+    const row = await env.DB.prepare("SELECT * FROM subs WHERE id = ?").bind(to).first();
+    if (!row) return json({ error: "對方還沒開啟推播，戳不到" }, 400, h);
+    // 台詞：優先用我幫他設、今天還沒做的提醒；沒有就用喝水台詞
+    const tnow = localNow(row.tz), fam = await loadFamily(env);
+    const pending = (fam.byFrom[me] || []).filter(a => a.link === l.id && !a.paused && habitDueToday(a.habit, row, tnow).some(m => !doneToday(row, a.id, tnow.day).includes(m)));
+    const plant = plantOf(row);
+    let line;
+    if (pending.length) {
+      const a = pick(pending), own = (a.habit.lines && a.habit.lines.remind) || [];
+      line = pick(own.length ? own : LINES.habit.remind).replace(/\{item\}/g, a.habit.name);
+    } else {
+      line = pick(activeLines(await getPool(), "remind", tnow.day));
+    }
+    line = line.replace(/\{name\}/g, plant.plantName).replace("{owe}", plant.owe).replace("{next}", "等一下");
+    await env.DB.prepare(`UPDATE links SET ${col} = ? WHERE id = ?`).bind(now, l.id).run();
+    const res = await sendPush(JSON.parse(row.sub), { title: `${user.name}叫我來催你：${line}`, body: "", tag: "poke" }, env);
+    return json({ ok: res.ok }, res.ok ? 200 : 502, h);
+  }
+
+  return json({ error: "not found" }, 404, h);
+}
+
 /* ================== API ================== */
 const PUSH_HOSTS = [/^web\.push\.apple\.com$/, /^fcm\.googleapis\.com$/, /^updates\.push\.services\.mozilla\.com$/, /\.notify\.windows\.com$/];
 const okId = id => typeof id === "string" && /^[A-Za-z0-9-]{16,64}$/.test(id);
@@ -496,6 +776,7 @@ async function handle(req, env) {
   const raw = await req.text();
   if (raw.length > 8000) return json({ error: "too large" }, 413, h);
   let b; try { b = JSON.parse(raw); } catch (e) { return json({ error: "bad json" }, 400, h); }
+  if (path === "/family/peek") { await ensureTable(env); return familyApi("peek", b, env, h); }   // 邀請連結落地頁，還沒有身分
   if (!okId(b.id)) return json({ error: "bad id" }, 400, h);
   await ensureTable(env);
 
@@ -508,19 +789,22 @@ async function handle(req, env) {
     const st = b.state || {};
     const hd = {};
     if (st.habitDone && typeof st.habitDone === "object") {
-      for (const [k, v] of Object.entries(st.habitDone).slice(0, 8)) {
+      for (const [k, v] of Object.entries(st.habitDone).slice(0, 14)) {
         if (Array.isArray(v)) hd[String(k).slice(0, 24)] = v.map(x => String(x).slice(0, 20)).slice(0, 12);
       }
     }
-    const state = { day: String(st.day || "").slice(0, 10), count: Number(st.count) || 0, lastDrink: Number(st.lastDrink) || 0, habitDone: hd };
+    const state = { day: String(st.day || "").slice(0, 10), count: Number(st.count) || 0, lastDrink: Number(st.lastDrink) || 0, habitDone: hd, total: Number(st.total) || 0 };
     let tz = String(b.tz || "Asia/Taipei").slice(0, 64);
     try { new Intl.DateTimeFormat("en", { timeZone: tz }); } catch (e) { tz = "Asia/Taipei"; }
     await env.DB.prepare(`INSERT INTO subs (id, sub, settings, state, tz, updated) VALUES (?1, ?2, ?3, ?4, ?5, ?6)
       ON CONFLICT(id) DO UPDATE SET sub = ?2, settings = ?3, state = ?4, tz = ?5, updated = ?6`)
       .bind(b.id, JSON.stringify({ endpoint: sub.endpoint, keys: { p256dh: sub.keys.p256dh, auth: sub.keys.auth } }),
         JSON.stringify(cleanSettings(b.settings)), JSON.stringify(state), tz, Date.now()).run();
+    await logAssignedDone(env, b.id, hd);
     return json({ ok: true }, 200, h);
   }
+
+  if (path.startsWith("/family/")) return familyApi(path.slice(8), b, env, h);
 
   if (path === "/lines") {
     if (!env.AI) return json({ error: "伺服器還沒綁定 Workers AI" }, 503, h);

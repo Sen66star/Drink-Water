@@ -76,6 +76,9 @@ body{transition:background .8s}
 .chip{font-size:13px;font-weight:600;color:var(--sub);background:#ffffffb3;border-radius:999px;padding:6px 11px;white-space:nowrap}
 .chip b{color:var(--ink)}
 .topbar .grow{flex:1}
+.famchip{position:relative;display:flex;align-items:center;gap:4px;color:var(--ink)}
+.famchip .dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#ff4d4f;border:2px solid #fff;display:none}
+.famchip.new .dot{display:block}
 .iconbtn{width:40px;height:40px;border-radius:50%;background:#ffffffb3;display:grid;place-items:center}
 .iconbtn svg{width:22px;height:22px;stroke:var(--ink)}
 .next{margin-top:14px;font-size:14px;color:var(--sky-sub,var(--sub))}
@@ -145,6 +148,62 @@ body{transition:background .8s}
   -webkit-user-select:text;user-select:text}
 #settings.open{transform:translateY(0)}
 .s-wrap{max-width:480px;margin:0 auto}
+/* ---------- 家園（暖色獨立配色） ---------- */
+#family{position:fixed;inset:0;z-index:6;background:#fbf4ea;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  transform:translateX(100%);transition:transform .35s ease;padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 32px);
+  -webkit-user-select:text;user-select:text;--f-accent:#d9703f;--f-soft:#fbe3d3;--f-ink:#4a3226;--f-sub:#8a6a58;color:var(--f-ink)}
+#family.open{transform:translateX(0)}
+#family .s-head{background:#fbf4ea}
+#family .done{color:var(--f-accent)}
+#family .sec-title{color:var(--f-sub)}
+#family .card{border:1px solid #f0e2d0}
+#family .note{color:var(--f-sub)}
+#family .btn.primary{background:var(--f-accent)}
+#family .btn.soft{background:var(--f-soft);color:var(--f-accent)}
+#family input[type=text],#family input[type=time]{background:#f7efe5;color:var(--f-ink)}
+#family .seg{background:#f7efe5}
+#family .days button{background:#f7efe5;color:var(--f-sub)}
+#family .days button.on{background:var(--f-accent);color:#fff}
+#family .addt{background:var(--f-soft);color:var(--f-accent)}
+#family .tchip{background:#f7efe5}
+#family .switch input:checked + span{background:var(--f-accent)}
+.garden{position:relative;background:linear-gradient(180deg,#fff6ea 0%,#fff6ea 62%,#e9cfa6 62%,#dcbb8c 100%);border-radius:20px;padding:14px 8px 10px;margin-bottom:14px;
+  display:flex;gap:4px;overflow-x:auto;-webkit-overflow-scrolling:touch;min-height:180px;align-items:flex-end}
+.garden .empty{margin:auto;text-align:center;color:var(--f-sub);font-size:14px;line-height:1.7;padding:20px}
+.gplant{flex:0 0 auto;width:96px;display:flex;flex-direction:column;align-items:center;border-radius:14px;padding:4px 2px 6px;transition:background .2s}
+.gplant svg{width:84px;height:103px}
+.gplant .nm{font-size:14px;font-weight:800;margin-top:2px;max-width:92px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.gplant .st{font-size:11.5px;font-weight:700;color:#7a5a40;background:#fff9;border-radius:999px;padding:1px 8px;margin-top:2px;white-space:nowrap}
+.gplant.sel{background:#ffffffb0;box-shadow:0 0 0 2px var(--f-accent) inset}
+.fhead{display:flex;align-items:center;gap:8px;padding:12px 0 6px}
+.fhead .nick{font-size:19px;font-weight:800}
+.fhead .real{font-size:13px;color:var(--f-sub)}
+.badge{font-size:12px;font-weight:700;border-radius:999px;padding:2px 9px;background:var(--f-soft);color:var(--f-accent);white-space:nowrap}
+.frow{border-top:1px solid #f3e7d8;padding:10px 0}
+.frow .top{display:flex;align-items:center;gap:8px}
+.frow .top .n{font-weight:800;flex:1}
+.frow .sub{font-size:12.5px;color:var(--f-sub);margin-top:2px}
+.state{font-size:12.5px;font-weight:800;border-radius:999px;padding:2px 9px;white-space:nowrap}
+.state.ok{background:#e3f6e6;color:#2b9a48}.state.wait{background:#fff1d6;color:#b7791f}.state.miss{background:#fde6e6;color:#c0392b}.state.off{background:#eee;color:#888}
+.dots{display:flex;gap:6px;margin-top:8px;align-items:flex-end}
+.dots .d{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10.5px;color:var(--f-sub);width:26px}
+.dots i{width:14px;height:14px;border-radius:50%;background:#efe4d6;display:block}
+.dots i.ok{background:#4cb963}.dots i.part{background:#f2b84b}.dots i.miss{background:#e8a59c}.dots i.none{background:transparent;border:2px dashed #e6d6c2;width:10px;height:10px}.dots i.todo{background:#fff;border:2px solid #e6c9a5;width:10px;height:10px}
+.xbtn{color:#c0392b;font-size:13px;font-weight:700;padding:4px 6px}
+.fbtns{display:flex;gap:8px;margin:12px 0 4px}
+.fbtns .btn{flex:1;margin:0}
+.linkbtn{display:block;margin:14px auto 4px;color:#c0392b;font-size:14px;font-weight:700}
+.invite-box{background:#f7efe5;border-radius:12px;padding:12px;margin:10px 0;text-align:center}
+.invite-box .code{font-size:30px;font-weight:900;letter-spacing:6px;color:var(--f-accent)}
+.invite-box .url{font-size:12px;color:var(--f-sub);word-break:break-all;margin-top:4px}
+.fform{background:#fff9f2;border:1px dashed #ecd2b6;border-radius:14px;padding:6px 12px 12px;margin-top:10px}
+/* 邀請連結落地頁 */
+#inviteLanding{position:fixed;inset:0;z-index:9;background:#fbf4eaf2;display:none;align-items:center;justify-content:center;padding:20px}
+#inviteLanding.show{display:flex}
+#inviteLanding .box{background:#fff;border-radius:22px;padding:22px 20px;max-width:380px;width:100%;color:#4a3226;box-shadow:0 20px 50px #7a4a2a33;text-align:center}
+#inviteLanding h2{font-size:20px;margin:6px 0 4px}
+#inviteLanding ol{text-align:left;font-size:14.5px;line-height:1.8;padding-left:22px;color:#6b4c3a}
+#inviteLanding .code{font-size:32px;font-weight:900;letter-spacing:6px;color:#d9703f;margin:8px 0}
 .s-head{display:flex;align-items:center;justify-content:space-between;padding:6px 0 10px;position:sticky;top:0;background:#f2f7fb;z-index:2}
 .s-head h1{font-size:22px;margin:0}
 .done{color:var(--accent);font-weight:700;font-size:17px;padding:8px 4px}
@@ -223,6 +282,7 @@ input[type=text]{width:140px;text-align:right}
     <span class="chip" id="dateChip"></span>
     <span class="chip" id="streakChip"></span>
     <span class="grow"></span>
+    <button class="chip famchip" id="openFamily" aria-label="家人">👨‍👩‍👧 家人<span class="dot"></span></button>
     <button class="iconbtn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
@@ -251,6 +311,17 @@ input[type=text]{width:140px;text-align:right}
   <div><div class="t">喝水啦・現在</div><div class="b" id="bannerText"></div></div>
 </div>
 <div id="toast"><span id="toastText"></span><button id="undoBtn">撤回</button></div>
+
+<!-- ---------- 家園 ---------- -->
+<section id="family" aria-label="家園">
+  <div class="s-wrap">
+    <div class="s-head"><h1>家園</h1><button class="done" id="closeFamily">完成</button></div>
+    <div id="famBody"></div>
+  </div>
+</section>
+
+<!-- ---------- 邀請連結落地頁（在 Safari 打開邀請連結時） ---------- -->
+<div id="inviteLanding" role="dialog" aria-label="家人邀請"><div class="box" id="inviteBox"></div></div>
 
 <!-- ---------- 設定 ---------- -->
 <section id="settings" aria-label="設定">
@@ -630,7 +701,7 @@ async function syncNow(keepalive){
                   sitOn:s.sitOn, sitMode:s.sitMode, sitInterval:s.sitInterval, sitStart:s.sitStart, sitEnd:s.sitEnd,
                   sitTimes:s.sitTimes, sitDays:s.sitDays,
                   habits:(s.habits||[]).map(h => ({ id:h.id, name:h.name, emoji:h.emoji, on:h.on, days:h.days, times:h.times, lines:h.lines })) },
-      state: { day:st.day, count:st.count, lastDrink:st.lastDrink, habitDone:todayDone() }
+      state: { day:st.day, count:st.count, lastDrink:st.lastDrink, habitDone:todayDone(), total:st.total }
     }, keepalive);
   }catch(e){ console.warn("sync failed", e); }
 }
@@ -724,11 +795,16 @@ function standDue(){
   return (m !== undefined && data.state.stood !== `${dayKey()} ${m}`) ? m : null;
 }
 /* ---------- 自訂習慣 ---------- */
+// 自己的習慣 + 家人幫我設的（暫停的不算）
+function allHabits(s = data.settings){
+  return [...(s.habits || []), ...(s.assigned || []).filter(a => !a.paused).map(a => ({ ...a, on:true }))];
+}
 const NAG = 30;   // 時間到 30 分鐘後還沒做，再催一次
 const habitKey = (h, m, d=new Date()) => `${dayKey(d)} ${m}`;
 function habitSlots(h, s=data.settings, d=new Date()){
   if (!h.on || !(h.days || []).includes(d.getDay())) return [];
-  return [...new Set((h.times||[]).filter(Boolean).map(toMin))].filter(m => !isQuiet(m, s)).sort((a,b)=>a-b);
+  // 家人設的提醒（有 from）是特別挑的時間，不受勿擾時段影響
+  return [...new Set((h.times||[]).filter(Boolean).map(toMin))].filter(m => h.from || !isQuiet(m, s)).sort((a,b)=>a-b);
 }
 function todayDone(){
   const out = {}, today = dayKey();
@@ -751,7 +827,7 @@ function hl(h, cat){
   return fill(t.replace(/\{item\}/g, h.name));
 }
 function habitMergedWith(m, s=data.settings){   // 這個時間點有沒有習慣提醒
-  return (s.habits||[]).some(h => habitSlots(h, s).some(x => Math.abs(x - m) <= MERGE));
+  return allHabits(s).some(h => habitSlots(h, s).some(x => Math.abs(x - m) <= MERGE));
 }
 function owe(){
   const n = nowMin();
@@ -1102,7 +1178,7 @@ function render(){
   const nextStage = STAGES[st+1];
   if (nextStage){
     const span = nextStage.at - STAGES[st].at, done = s.total - STAGES[st].at;
-    const verb = (data.settings.habits||[]).length ? "再完成" : "再喝";
+    const verb = allHabits().length ? "再完成" : "再喝";
     $("#plantInfo").innerHTML = `<b>${nm}</b>・${STAGES[st].name}　${verb} <b>${nextStage.at - s.total}</b> 次會長大`;
     $("#plantBar").style.width = (done/span*100) + "%";
   } else {
@@ -1113,7 +1189,7 @@ function render(){
 
 function renderChips(){
   const box = $("#habitChips");
-  const list = (data.settings.habits||[]).filter(h => habitSlots(h).length);
+  const list = allHabits().filter(h => habitSlots(h).length);
   const key = JSON.stringify(list.map(h => [h.id, h.emoji, h.name, habitStatus(h)]));
   if (box.dataset.key === key) return;
   box.dataset.key = key;
@@ -1177,8 +1253,9 @@ function undo(){
   save(); syncNow(true); cheerUntil = 0; render(); hideToast();
   say("好，當我沒看到。但你還是要喝喔。");
 }
-function showToast(t){
+function showToast(t, canUndo = true){
   $("#toastText").textContent = t;
+  $("#undoBtn").style.display = canUndo ? "" : "none";
   $("#toast").classList.add("show");
   clearTimeout(toastTimer);
   toastTimer = setTimeout(hideToast, 4000);
@@ -1215,7 +1292,7 @@ function tick(){
   }
   // 自訂習慣：時間到提醒一次，30 分鐘後還沒做再催一次
   const fired = data.state.habitFired = data.state.habitFired || {};
-  for (const h of data.settings.habits || []){
+  for (const h of allHabits()){
     for (const m of habitSlots(h)){
       const k = habitKey(h, m), nk = k + " nag";
       if (m <= n && !fired[k]){ fired[k] = 1; save(); if (n - m <= 5 && !pushOn()) fireHabit(h, m, false); }
@@ -1231,10 +1308,11 @@ function fireReminder(slot){
 }
 function fireSit(){ showReminder(fill(pick(activeLines("sit"))), "", "sit"); }
 function fireHabit(h, slot, nag){
-  const others = (data.settings.habits||[]).filter(o => o.id !== h.id && habitSlots(o).some(m => Math.abs(m - slot) <= MERGE));
+  const others = allHabits().filter(o => o.id !== h.id && habitSlots(o).some(m => Math.abs(m - slot) <= MERGE));
   let tail = others.length ? "還有：" + others.map(o => o.name).join("、") : "";
   if (!nag && !tail && slots().some(m => Math.abs(m - slot) <= MERGE)) tail = "順便喝口水 💧";
   else if (!nag && !tail && sitSlots().some(m => Math.abs(m - slot) <= MERGE)) tail = fill(pick(activeLines("sitTail")));
+  else if (!nag && !tail && h.from) tail = `${h.from}幫你設的提醒`;
   showReminder(hl(h, nag ? "overdue" : "remind"), tail, "habit-" + h.id);
 }
 // iPhone 會自動在標題下面加「from 喝水啦」，所以台詞直接當標題
@@ -1454,6 +1532,255 @@ function renderPush(){
   show("尚未開啟", false, true, "開啟後，App 關著也會準時提醒你，不會再塞滿行事曆。", false);
 }
 
+/* ================== 家園 ================== */
+const FAM_KEY = "hoshuila-fam";
+let fam = (() => { try{ return JSON.parse(localStorage.getItem(FAM_KEY)) || null; }catch(e){ return null; } })();
+let famSel = null, famForm = null, famInvite = null, famBusy = false;
+const famSeenKey = "hoshuila-fam-seen";
+function famSig(f){ return f ? JSON.stringify([f.family.map(x => x.link), f.forMe.map(x => x.id + x.name)]) : ""; }
+function famDot(){
+  let seen = ""; try{ seen = localStorage.getItem(famSeenKey) || ""; }catch(e){}
+  $("#openFamily").classList.toggle("new", !!fam && famSig(fam) !== seen && !$("#family").classList.contains("open"));
+}
+function famMarkSeen(){ try{ localStorage.setItem(famSeenKey, famSig(fam)); }catch(e){} famDot(); }
+async function famLoad(){
+  if (!pushReady() || !pushOn()) return;
+  try{
+    const j = await api("/family/state", { id: deviceId() });
+    fam = j;
+    try{ localStorage.setItem(FAM_KEY, JSON.stringify(fam)); }catch(e){}
+    // 家人幫我設的提醒，存進設定讓排程和首頁用得到
+    const was = JSON.stringify(data.settings.assigned || []);
+    data.settings.assigned = j.forMe.map(a => ({ id:a.id, name:a.name, emoji:a.emoji, days:a.days, times:a.times, lines:a.lines, paused:a.paused, from:a.from }));
+    if (JSON.stringify(data.settings.assigned) !== was){ try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){} render(); }
+  }catch(e){
+    if (String(e.message).includes("名字")) fam = { needName:true, family:[], forMe:[] };
+  }
+  famDot();
+  if ($("#family").classList.contains("open")) famRender();
+}
+function openFamily(){ $("#family").classList.add("open"); famRender(); famLoad().then(famMarkSeen); }
+function closeFamily(){ $("#family").classList.remove("open"); famForm = null; famDot(); render(); }
+async function famCall(path, body, okMsg){
+  if (famBusy) return null;
+  famBusy = true;
+  try{ const r = await api("/family/" + path, { id: deviceId(), ...body }); if (okMsg) showToast(okMsg, false); return r; }
+  catch(e){ alert(e.message || e); return null; }
+  finally{ famBusy = false; }
+}
+const esc = t => String(t ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c]));
+const ROLE = { mutual:"互相照顧", carer:"你照顧他", cared:"在照顧你" };
+function famDayList(today){   // 對方的今天往前 7 天
+  const [y,m,d] = (today || dayKey()).split("-").map(Number), out = [];
+  for (let i = 6; i >= 0; i--){ const x = new Date(y, m-1, d - i); out.push({ key:dayKey(x), wd:x.getDay(), label:i === 0 ? "今" : `${x.getDate()}` }); }
+  return out;
+}
+function habitToday(a, f){
+  const today = f.today || dayKey();
+  const wd = famDayList(today).at(-1).wd;
+  if (a.paused) return { cls:"off", text:"已暫停" };
+  if (!(a.days||[]).includes(wd)) return { cls:"off", text:"今天沒有" };
+  const done = (a.log && a.log[today]) || [], n = nowMin();
+  const slots = [...new Set(a.times.map(toMin))].sort((x,y)=>x-y);
+  const due = slots.filter(m => m <= n);
+  if (slots.length && slots.every(m => done.includes(m))) return { cls:"ok", text:"✓ 完成" };
+  if (due.some(m => !done.includes(m))) return { cls:"miss", text:`還沒做（${done.length}/${slots.length}）` };
+  return { cls:"wait", text: done.length ? `${done.length}/${slots.length}` : `${fmt(slots.find(m => m > n))} 提醒` };
+}
+function famRender(){
+  const box = $("#famBody");
+  if (!pushReady() || !pushOn()){
+    box.innerHTML = `<div class="card" style="padding:18px 16px"><p class="note" style="margin:0 0 12px">家人提醒要靠推播送到手機，請先到設定開啟「推播提醒」。</p><button class="btn primary" id="famGoPush">去開啟推播</button></div>`;
+    $("#famGoPush").onclick = () => { closeFamily(); openSettings(); };
+    return;
+  }
+  if (!fam){ box.innerHTML = `<div class="card" style="padding:18px 16px"><p class="note" style="margin:0">連線中…</p></div>`; return; }
+  if (fam.needName){
+    box.innerHTML = `<div class="card" style="padding:18px 16px">
+      <p style="font-size:17px;font-weight:800;margin:0 0 6px">先告訴家人你是誰 🌱</p>
+      <p class="note" style="margin:0 0 12px">家人收到你的邀請、被你戳一下時，會看到這個名字。</p>
+      <input type="text" id="famName" maxlength="10" placeholder="例如：Sen、小明、媽媽" style="width:100%;margin-bottom:12px">
+      <button class="btn primary" id="famNameSave">開始使用家園</button></div>`;
+    $("#famNameSave").onclick = async () => {
+      const name = $("#famName").value.trim(); if (!name) return alert("請填你的名字");
+      if (await famCall("profile", { name })){ fam = null; await famLoad(); famRender(); maybeAcceptFromUrl(); }
+    };
+    return;
+  }
+  const list = fam.family || [];
+  if (famSel && !list.some(f => f.link === famSel)) famSel = null;
+  if (!famSel && list.length) famSel = list[0].link;
+  let html = `<div class="garden">`;
+  if (!list.length) html += `<div class="empty">花園還空空的<br>邀請第一位家人一起種吧 🌷</div>`;
+  list.forEach(f => {
+    const pl = f.plant, st = pl ? stageOf(pl.total) : 1, md = pl && pl.owe > 0 ? "thirsty" : "happy";
+    const done = f.assigned.filter(a => habitToday(a, f).cls === "ok").length, live = f.assigned.filter(a => !a.paused && habitToday(a, f).cls !== "off").length;
+    const tag = f.role === "cared" ? "在照顧你" : !f.push ? "還沒開推播" : live ? `今天 ${done}/${live}` : pl && pl.owe > 0 ? "口渴中" : "開心";
+    html += `<button class="gplant${f.link === famSel ? " sel" : ""}" data-link="${f.link}">
+      <svg viewBox="0 -30 200 245">${plantSVG(st, md, {})}</svg>
+      <span class="nm">${esc(f.nick || f.name)}</span><span class="st">${tag}</span></button>`;
+  });
+  html += `</div>`;
+  const f = list.find(x => x.link === famSel);
+  if (f){
+    html += `<div class="card"><div class="fhead"><span class="nick">${esc(f.nick || f.name)}</span>${f.nick ? `<span class="real">${esc(f.name)}</span>` : ""}<span class="grow" style="flex:1"></span><span class="badge">${ROLE[f.role]}</span></div>`;
+    if (f.role === "cared"){
+      const n = (fam.forMe || []).filter(a => a.link === f.link).length;
+      html += `<p class="note">${esc(f.nick || f.name)} 在照顧你${n ? `，幫你設了 ${n} 個提醒，在下面「家人幫我設的提醒」可以看到。` : "。"}</p>`;
+    } else {
+      if (!f.assigned.length) html += `<p class="note">還沒幫${esc(f.nick || f.name)}設提醒。按「幫他設提醒」，他的植物就會準時催他。</p>`;
+      f.assigned.forEach(a => {
+        const t = habitToday(a, f), days = famDayList(f.today);
+        const dots = days.map(d => {
+          const on = (a.days||[]).includes(d.wd), done = (a.log && a.log[d.key]) || [], total = a.times.length;
+          const before = a.created && d.key < dayKey(new Date(a.created));   // 建立提醒之前的日子不算
+          let c = !on || before ? "none" : done.length >= total ? "ok" : done.length ? "part" : d.label === "今" ? "todo" : "miss";
+          if (a.paused && d.label === "今") c = "none";
+          return `<span class="d"><i class="${c}"></i>${d.label}</span>`;
+        }).join("");
+        html += `<div class="frow"><div class="top"><span class="n">${a.emoji ? a.emoji + " " : ""}${esc(a.name)}</span><span class="state ${t.cls}">${t.text}</span><button class="xbtn" data-del="${a.id}" aria-label="刪除提醒">刪除</button></div>
+          <div class="sub">${a.days.length === 7 ? "每天" : "每週" + [1,2,3,4,5,6,0].filter(d => a.days.includes(d)).map(d => "日一二三四五六"[d]).join("、")} ${a.times.join("、")}</div>
+          <div class="dots">${dots}</div></div>`;
+      });
+      const wait = f.pokeWait > 0 ? Math.ceil(f.pokeWait / 60) : 0;
+      html += `<div class="fbtns"><button class="btn soft" id="famPoke" ${wait || !f.push ? "disabled style=\"opacity:.5\"" : ""}>👉 ${wait ? `${wait} 分鐘後可再戳` : "戳一下"}</button><button class="btn primary" id="famAdd">＋ 幫他設提醒</button></div>`;
+      if (!f.push) html += `<p class="note" style="margin:4px 0 0">${esc(f.nick || f.name)}還沒開推播，提醒和戳一下都送不到，請他到設定開啟。</p>`;
+      if (famForm) html += famFormHTML();
+    }
+    html += `<div class="row" style="border-top:1px solid #f3e7d8"><label for="famNick">你怎麼稱呼他</label><input type="text" id="famNick" maxlength="10" value="${esc(f.nick)}" placeholder="${esc(f.name)}"></div>
+      <button class="linkbtn" id="famUnlink">解除家人連結</button></div>`;
+  }
+  // 家人幫我設的
+  if ((fam.forMe || []).length){
+    html += `<div class="sec-title">家人幫我設的提醒</div><div class="card">`;
+    fam.forMe.forEach(a => {
+      html += `<div class="row"><div><label>${a.emoji ? a.emoji + " " : ""}${esc(a.name)}</label><div class="hint">${esc(a.from)}設的・${a.times.join("、")}${a.paused ? "・已暫停" : ""}</div></div>
+        <label class="switch"><input type="checkbox" data-pause="${a.id}" ${a.paused ? "" : "checked"}><span></span></label></div>`;
+    });
+    html += `<p class="note">關掉就是暫停，設提醒的家人會看到「已暫停」。</p></div>`;
+  }
+  // 邀請
+  html += `<div class="sec-title">邀請家人</div><div class="card" style="padding-bottom:14px">`;
+  if (list.length >= 5) html += `<p class="note">已經有 5 位家人了，是上限喔。</p>`;
+  else if (famInvite){
+    const url = inviteURL(famInvite.code);
+    html += `<div class="invite-box"><div class="note" style="margin:0">把連結傳給家人，或請他輸入邀請碼</div><div class="code">${famInvite.code}</div><div class="url">${esc(url)}</div></div>
+      <div class="fbtns"><button class="btn primary" id="famShare">用 LINE 等分享</button><button class="btn soft" id="famCopy">複製連結</button></div>
+      <p class="note">邀請 7 天內有效，只能用一次。對方是「${famInvite.type === "care" ? "你照顧他" : "互相照顧"}」。</p>`;
+  } else {
+    html += `<div class="seg" id="famType"><button data-t="mutual" class="on">互相照顧</button><button data-t="care">我照顧他</button></div>
+      <p class="note" id="famTypeNote">彼此都能幫對方設提醒、看到對方的進度。</p>
+      <button class="btn primary" id="famInviteBtn">產生邀請連結</button>`;
+  }
+  html += `</div>`;
+  // 輸入邀請碼
+  html += `<div class="sec-title">收到邀請？</div><div class="card" style="padding-bottom:14px">
+    <div class="row"><label for="famCode">邀請碼</label><input type="text" id="famCode" maxlength="8" placeholder="6 碼英數" style="text-transform:uppercase;width:130px"></div>
+    <div class="row"><label for="famCodeNick">你怎麼稱呼他</label><input type="text" id="famCodeNick" maxlength="10" placeholder="可以不填"></div>
+    <button class="btn soft" id="famAccept" style="margin-top:10px">加入</button></div>`;
+  // 我的設定
+  html += `<div class="sec-title">我的設定</div><div class="card">
+    <div class="row"><label for="famMyName">我的名字</label><input type="text" id="famMyName" maxlength="10" value="${esc(fam.me && fam.me.name)}"></div>
+    <div class="row"><div><label for="famSummary">晚上摘要時間</label><div class="hint">家人有提醒還沒做，才會通知你</div></div><input type="time" id="famSummary" value="${esc(fam.me && fam.me.summary || "21:30")}"></div></div>`;
+  box.innerHTML = html;
+  famBind(f);
+}
+function famFormHTML(){
+  const h = famForm;
+  return `<div class="fform">
+    <div class="row" style="border:0"><label>提醒名稱</label><input type="text" id="ffName" maxlength="10" placeholder="例如 吃藥" value="${esc(h.name)}"></div>
+    <div class="emojis">${EMOJIS.map(e => `<button type="button" data-e="${e}" class="${h.emoji === e ? "on" : ""}">${e}</button>`).join("")}</div>
+    <label>哪幾天</label><div class="days" id="ffDays">${[1,2,3,4,5,6,0].map(d => `<button type="button" data-d="${d}" class="${h.days.includes(d) ? "on" : ""}">${"日一二三四五六"[d]}</button>`).join("")}</div>
+    <div class="times" id="ffTimes" style="margin-top:10px"></div>
+    <p class="note" id="ffMsg">儲存時會請 AI 依名稱寫專屬台詞，大約 10 秒。</p>
+    <div class="fbtns"><button class="btn soft" id="ffCancel">取消</button><button class="btn primary" id="ffSave">儲存並送出</button></div></div>`;
+}
+const inviteURL = code => location.origin + location.pathname.replace(/index\.html$/, "") + "?invite=" + code;
+function famBind(f){
+  const B = (sel, fn, ev = "click") => { const el = $(sel); if (el) el.addEventListener(ev, fn); };
+  document.querySelectorAll(".gplant").forEach(b => b.onclick = () => { famSel = b.dataset.link; famForm = null; famRender(); });
+  document.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+    if (!confirm("刪除這個提醒？對方就不會再收到了。")) return;
+    if (await famCall("unassign", { habitId:b.dataset.del }, "已刪除")) famLoad();
+  });
+  document.querySelectorAll("[data-pause]").forEach(c => c.onchange = async () => {
+    if (await famCall("pause", { habitId:c.dataset.pause, paused:!c.checked }, c.checked ? "已恢復提醒" : "已暫停")) famLoad(); else c.checked = !c.checked;
+  });
+  B("#famPoke", async () => { if (await famCall("poke", { link:f.link }, "戳到了！他的植物去催他了 👉")) famLoad(); });
+  B("#famAdd", () => { famForm = { name:"", emoji:"", days:[0,1,2,3,4,5,6], times:["21:00"] }; famRender(); $(".fform").scrollIntoView({ block:"center", behavior:"smooth" }); });
+  B("#famNick", async e => { const v = e.target.value.trim(); if (v !== (f.nick || "") && await famCall("nick", { link:f.link, nick:v }, "已更新暱稱")) famLoad(); }, "change");
+  B("#famUnlink", async () => {
+    if (!confirm(`解除跟${f.nick || f.name}的連結？你幫他設的提醒也會一起刪除。`)) return;
+    if (await famCall("unlink", { link:f.link }, "已解除")){ famSel = null; famLoad(); }
+  });
+  // 新增提醒表單
+  if (famForm){
+    const h = famForm;
+    B("#ffName", e => { h.name = e.target.value.trim(); }, "input");
+    document.querySelectorAll(".fform .emojis button").forEach(b => b.onclick = () => { h.emoji = h.emoji === b.dataset.e ? "" : b.dataset.e; document.querySelectorAll(".fform .emojis button").forEach(x => x.classList.toggle("on", x.dataset.e === h.emoji)); });
+    document.querySelectorAll("#ffDays button").forEach(b => b.onclick = () => { const d = Number(b.dataset.d); h.days = h.days.includes(d) ? h.days.filter(x => x !== d) : [...h.days, d].sort(); b.classList.toggle("on"); });
+    const drawTimes = () => renderTimeListFor($("#ffTimes"), h.times, 1260, drawTimes);
+    drawTimes();
+    B("#ffCancel", () => { famForm = null; famRender(); });
+    B("#ffSave", async () => {
+      if (!h.name) return alert("先填提醒名稱");
+      if (!h.days.length || !h.times.length) return alert("要選哪幾天和時間");
+      const btn = $("#ffSave"); btn.disabled = true; btn.textContent = "AI 寫台詞中…";
+      let lines = { remind:[], overdue:[], done:[] };
+      try{ const r = await api("/lines", { id: deviceId(), name:h.name, plant:"小芽" }); lines = { remind:r.remind || [], overdue:r.overdue || [], done:r.done || [] }; }
+      catch(e){ $("#ffMsg").textContent = "AI 這次沒寫出來，先用通用台詞。"; }
+      btn.textContent = "送出中…";
+      const ok = await famCall("assign", { link:f.link, habit:{ ...h, lines } }, `已幫${f.nick || f.name}設好提醒`);
+      if (ok){ famForm = null; famLoad(); } else { btn.disabled = false; btn.textContent = "儲存並送出"; }
+    });
+  }
+  // 邀請
+  let type = "mutual";
+  document.querySelectorAll("#famType button").forEach(b => b.onclick = () => {
+    type = b.dataset.t; document.querySelectorAll("#famType button").forEach(x => x.classList.toggle("on", x === b));
+    $("#famTypeNote").textContent = type === "care" ? "只有你能幫他設提醒、看他的進度，適合照顧長輩。他會看到「你在照顧他」。" : "彼此都能幫對方設提醒、看到對方的進度。";
+  });
+  B("#famInviteBtn", async () => { const r = await famCall("invite", { type }); if (r){ famInvite = { code:r.code, type }; famRender(); } });
+  B("#famShare", async () => {
+    const url = inviteURL(famInvite.code), text = `${fam.me.name} 邀請你加入「喝水啦」的家園，一起互相提醒 🌱\n邀請碼：${famInvite.code}`;
+    try{ if (navigator.share) await navigator.share({ title:"家園邀請", text, url }); else { await navigator.clipboard.writeText(text + "\n" + url); showToast("已複製，貼到 LINE 給家人", false); } }catch(e){}
+  });
+  B("#famCopy", async () => { try{ await navigator.clipboard.writeText(inviteURL(famInvite.code)); showToast("已複製連結", false); }catch(e){ prompt("複製這個連結", inviteURL(famInvite.code)); } });
+  B("#famAccept", async () => {
+    const code = $("#famCode").value.trim().toUpperCase(); if (!code) return alert("請輸入邀請碼");
+    if (await famCall("accept", { code, nick:$("#famCodeNick").value.trim() }, "成為家人了 🌱")){ famInvite = null; famSel = null; await famLoad(); }
+  });
+  B("#famMyName", async e => { const v = e.target.value.trim(); if (v && await famCall("profile", { name:v, summary:fam.me.summary }, "已更新名字")) famLoad(); }, "change");
+  B("#famSummary", async e => { if (e.target.value && await famCall("profile", { name:"", summary:e.target.value }, "已更新摘要時間")) famLoad(); }, "change");
+}
+// 邀請連結：在 Safari 打開時顯示說明；在主畫面 App 裡打開就直接帶入邀請碼
+const INVITE_CODE = (() => { try{ return (new URLSearchParams(location.search).get("invite") || "").toUpperCase().replace(/[^A-Z0-9]/g, ""); }catch(e){ return ""; } })();
+async function showInviteLanding(){
+  if (!INVITE_CODE) return;
+  const standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches;
+  if (standalone){ openFamily(); setTimeout(maybeAcceptFromUrl, 300); return; }
+  let who = "家人", type = "mutual";
+  try{ const r = await api("/family/peek", { code:INVITE_CODE }); who = r.fromName; type = r.type; }catch(e){ who = ""; }
+  $("#inviteBox").innerHTML = who ? `
+    <div style="font-size:40px">🌱</div>
+    <h2>${esc(who)} 邀請你加入家園</h2>
+    <p class="note" style="margin:0">${type === "care" ? `${esc(who)} 想照顧你，會幫你設提醒，讓植物準時叫你。` : "你們可以互相幫對方設提醒、看彼此的進度。"}</p>
+    <div class="code">${INVITE_CODE}</div>
+    <button class="btn primary" id="landCopy" style="background:#d9703f">複製邀請碼</button>
+    <ol>
+      <li>還沒安裝的話：按 Safari 下方「分享 → 加入主畫面」</li>
+      <li>從主畫面打開「喝水啦」，到設定開啟推播</li>
+      <li>按上方「👨‍👩‍👧 家人」，在「收到邀請？」貼上邀請碼，按加入</li>
+    </ol>
+    <button class="linkbtn" id="landClose" style="color:#8a6a58">先看看 App</button>`
+    : `<h2>這個邀請已經失效</h2><p class="note">請家人重新產生一個邀請連結給你。</p><button class="btn primary" id="landClose" style="background:#d9703f">好</button>`;
+  $("#inviteLanding").classList.add("show");
+  const c = $("#landCopy");
+  if (c) c.onclick = async () => { try{ await navigator.clipboard.writeText(INVITE_CODE); c.textContent = "已複製 ✓"; }catch(e){ prompt("複製邀請碼", INVITE_CODE); } };
+  $("#landClose").onclick = () => $("#inviteLanding").classList.remove("show");
+}
+function maybeAcceptFromUrl(){ const el = $("#famCode"); if (INVITE_CODE && el && !el.value){ el.value = INVITE_CODE; el.scrollIntoView({ block:"center" }); } }
+
 /* ================== 綁定事件 ================== */
 $("#drinkBtn").addEventListener("click", drink);
 $("#standBtn").addEventListener("click", () => {
@@ -1492,6 +1819,8 @@ bindTime($("#sitStart"), v => set("sitStart", v));
 bindTime($("#sitEnd"), v => set("sitEnd", v));
 $("#plantName").addEventListener("input", e => { data.settings.plantName = e.target.value.trim() || "小芽"; save(); });
 $("#pushBtn").addEventListener("click", enablePush);
+$("#openFamily").addEventListener("click", openFamily);
+$("#closeFamily").addEventListener("click", closeFamily);
 $("#addHabit").addEventListener("click", () => {
   const list = data.settings.habits = data.settings.habits || [];
   if (list.length >= MAX_HABITS) return;
@@ -1516,7 +1845,7 @@ $("#resetAll").addEventListener("click", () => {
   say("我又變回種子了…這次要好好照顧我喔。");
 });
 document.addEventListener("visibilitychange", () => {
-  if (!document.hidden){ tick(); syncNow(); }        // 回到 App：順便同步（跨日、訂閱更新）
+  if (!document.hidden){ tick(); syncNow(); famLoad(); }        // 回到 App：順便同步（跨日、訂閱更新、家人）
   else if (syncTimer) syncNow(true);                 // 離開 App 前把還沒送的設定送出去
 });
 
@@ -1526,6 +1855,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
   // App 開著時收到推播：讓植物和橫幅也一起叫
   navigator.serviceWorker.addEventListener("message", e => {
     if (!e.data || e.data.type !== "push" || !e.data.body) return;
+    famLoad();
     say(e.data.body);
     const p = $("#plant"); p.classList.remove("ring"); void p.offsetWidth; p.classList.add("ring");
     $("#bannerText").textContent = e.data.body;
@@ -1540,6 +1870,10 @@ render();
 say(data.state.count === 0 && nowMin() < 11*60 && !isQuiet(nowMin()) ? pick(LINES.morning) : moodLine());
 tick();
 setInterval(tick, 20000);
+famDot();
+famLoad();
+setInterval(() => { if (!document.hidden) famLoad(); }, 5 * 60 * 1000);
+showInviteLanding();
 </script>
 </body>
 </html>
