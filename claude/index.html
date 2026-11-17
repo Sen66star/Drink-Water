@@ -33,6 +33,32 @@ body{
 button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 
 /* ---------- 水位 ---------- */
+/* ---------- 天空主題（早、中、黃昏、晚 + 節日） ---------- */
+:root[data-time=morning]{--sky1:#ffd9bd;--sky2:#e8f5ff}
+:root[data-time=noon]{--sky1:#94d2ff;--sky2:#e9f7ff}
+:root[data-time=dusk]{--sky1:#8c7fd6;--sky2:#ffd0a8}
+:root[data-time=night]{--sky1:#0e2244;--sky2:#2a4c84;--sky-ink:#f0f7ff;--sky-sub:#bcd0e6}
+:root[data-fest=halloween][data-time=night]{--sky1:#22103c;--sky2:#5a3488}
+:root[data-fest=halloween][data-time=dusk]{--sky1:#5a3488;--sky2:#ffb26b}
+body{transition:background .8s}
+#sky{position:fixed;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+#sky svg{width:100%;height:100%;display:block}
+#sky .cloud{animation:drift 60s linear infinite}
+#sky .cloud.slow{animation-duration:90s}
+@keyframes drift{from{transform:translateX(-140px)}to{transform:translateX(520px)}}
+#sky .star{animation:twinkle 3s ease-in-out infinite}
+@keyframes twinkle{0%,100%{opacity:.25}50%{opacity:1}}
+#sky .snow{animation:fall 9s linear infinite}
+@keyframes fall{from{transform:translateY(-40px)}to{transform:translateY(760px)}}
+#sky .floatup{animation:floatup 11s ease-in infinite}
+@keyframes floatup{0%{transform:translateY(0);opacity:0}10%{opacity:1}100%{transform:translateY(-640px);opacity:0}}
+#sky .swing{transform-box:fill-box;transform-origin:50% 0;animation:swing 3.5s ease-in-out infinite}
+@keyframes swing{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+#sky .burst{transform-box:fill-box;transform-origin:center;animation:burst 2.8s ease-out infinite}
+@keyframes burst{0%{transform:scale(.1);opacity:0}15%{opacity:1}70%{opacity:.9}100%{transform:scale(1);opacity:0}}
+#sky .bat{animation:batfly 14s linear infinite}
+@keyframes batfly{0%{transform:translate(-60px,0)}25%{transform:translate(110px,-24px)}50%{transform:translate(240px,10px)}75%{transform:translate(360px,-18px)}100%{transform:translate(470px,4px)}}
+@media (prefers-reduced-motion: reduce){#sky *{animation:none!important}}
 #water{position:fixed;left:0;right:0;bottom:0;height:var(--level,10%);z-index:0;pointer-events:none;
   transition:height 1.4s cubic-bezier(.3,1.25,.5,1)}
 #water .fill{position:absolute;inset:0;background:linear-gradient(180deg,#9bd8ff 0%,#5db5f1 40%,#3a8fd6 100%)}
@@ -52,11 +78,11 @@ button{font:inherit;color:inherit;border:0;background:none;cursor:pointer}
 .topbar .grow{flex:1}
 .iconbtn{width:40px;height:40px;border-radius:50%;background:#ffffffb3;display:grid;place-items:center}
 .iconbtn svg{width:22px;height:22px;stroke:var(--ink)}
-.next{margin-top:14px;font-size:14px;color:var(--sub)}
+.next{margin-top:14px;font-size:14px;color:var(--sky-sub,var(--sub))}
 .next b{color:var(--ink)}
-.count{margin-top:2px;font-size:60px;font-weight:800;letter-spacing:-1px;line-height:1.05;font-variant-numeric:tabular-nums}
-.count small{font-size:24px;font-weight:700;color:var(--sub);letter-spacing:0}
-.count-label{font-size:13px;color:var(--sub);font-weight:600}
+.count{margin-top:2px;font-size:60px;font-weight:800;letter-spacing:-1px;line-height:1.05;font-variant-numeric:tabular-nums;color:var(--sky-ink,var(--ink))}
+.count small{font-size:24px;font-weight:700;color:var(--sky-sub,var(--sub));letter-spacing:0}
+.count-label{font-size:13px;color:var(--sky-sub,var(--sub));font-weight:600}
 
 .stage-area{flex:1;min-height:0;width:100%;display:flex;flex-direction:column;align-items:center;justify-content:center}
 .bubble{position:relative;width:min(100%,420px);background:var(--card);border-radius:18px;padding:12px 18px 14px;font-size:16px;line-height:1.5;
@@ -181,6 +207,7 @@ input[type=text]{width:140px;text-align:right}
 </head>
 <body>
 
+<div id="sky" aria-hidden="true"></div>
 <div id="water" aria-hidden="true">
   <svg class="wave w2" viewBox="0 0 1200 34" preserveAspectRatio="none"><path d="M0 17 Q150 0 300 17 T600 17 T900 17 T1200 17 V34 H0Z"/></svg>
   <svg class="wave w1" viewBox="0 0 1200 34" preserveAspectRatio="none"><path d="M0 17 Q150 34 300 17 T600 17 T900 17 T1200 17 V34 H0Z"/></svg>
@@ -207,7 +234,7 @@ input[type=text]{width:140px;text-align:right}
 
   <div class="stage-area">
     <div class="bubble" id="bubble"></div>
-    <svg id="plant" viewBox="0 0 200 215" role="img" aria-label="小植物"></svg>
+    <svg id="plant" viewBox="0 -30 200 245" role="img" aria-label="小植物"></svg>
     <div class="plant-meta">
       <div id="plantInfo"></div>
       <div class="bar"><i id="plantBar"></i></div>
@@ -469,6 +496,16 @@ const LINES = {
       "有做有保佑，{item}達成 ✨",
       "乖，這才是會照顧自己的人。"
     ]
+  },
+  fest: {
+    newyear:   ["新年快樂！今年也要喝好喝滿 🎉", "新的一年，從一杯水開始。", "跨年熬夜沒關係，水要喝夠。"],
+    valentine: ["情人節快樂！愛自己就先喝杯水 💗", "沒有情人沒關係，有我跟水杯就夠了。", "巧克力吃完，記得喝水解膩。"],
+    halloween: ["不給水就搗蛋！🎃", "萬聖節快樂！乾巴巴的人會被南瓜抓走喔。", "今天我是巫師，咒語是：多喝水。"],
+    xmas:      ["聖誕快樂！今天的禮物是一杯水 🎁", "聖誕老人說：有喝水的才有禮物。", "雪下好大（是我想像的），快喝杯溫水。"],
+    cny:       ["新年快樂！紅包拿了，水也要喝 🧧", "過年吃這麼鹹，記得多喝水喔。", "恭喜發財，水杯拿來。"],
+    lantern:   ["元宵節快樂！吃完湯圓記得喝水。", "提燈籠出門，水壺也帶著。"],
+    duanwu:    ["端午節快樂！粽子很黏，水要多喝。", "划龍舟要補水，你滑手機也是。"],
+    midautumn: ["中秋節快樂！烤肉配水，不要只配汽水。", "月亮好圓，你的水杯也要喝到見底。", "我戴柚子帽好看嗎？好看就去喝水。"]
   },
   stood: [
     "好樣的！站起來的你特別帥 ✨",
@@ -758,6 +795,200 @@ const LEAVES = [
 ];
 const HEIGHT = [0,20,40,62,84,100,108];
 
+/* ================== 主題：時段、季節、節日 ================== */
+// 農曆節日 2026–2030 已對照萬年曆；之後的年份改用瀏覽器內建農曆推算
+const FEST_TABLE = {
+  cny:       { 2026:"02-17", 2027:"02-06", 2028:"01-26", 2029:"02-13", 2030:"02-03" },
+  duanwu:    { 2026:"06-19", 2027:"06-09", 2028:"05-28", 2029:"06-16", 2030:"06-05" },
+  midautumn: { 2026:"09-25", 2027:"09-15", 2028:"10-03", 2029:"09-22", 2030:"09-12" }
+};
+const FEST_NAME = { newyear:"新年", valentine:"情人節", halloween:"萬聖節", xmas:"聖誕節", cny:"春節", lantern:"元宵節", duanwu:"端午節", midautumn:"中秋節" };
+const dayNo = (y, m, d) => Math.round(Date.UTC(y, m - 1, d) / 86400000);
+function lunarOf(d){
+  try{
+    const p = Object.fromEntries(new Intl.DateTimeFormat("zh-TW-u-ca-chinese", { month:"numeric", day:"numeric" }).formatToParts(d).map(x => [x.type, x.value]));
+    return /^\d+$/.test(p.month) ? { m:+p.month, d:+p.day } : null;   // 閏月不算
+  }catch(e){ return null; }
+}
+function festOf(d){
+  const y = d.getFullYear(), m = d.getMonth() + 1, day = d.getDate(), today = dayNo(y, m, day);
+  const at = k => { const v = FEST_TABLE[k][y]; return v ? dayNo(y, +v.slice(0,2), +v.slice(3)) : null; };
+  const cny = at("cny");
+  if (cny !== null){
+    if (today >= cny - 1 && today <= cny + 4) return "cny";        // 除夕到初五
+    if (today === cny + 14) return "lantern";
+    if (today === at("duanwu")) return "duanwu";
+    if (today === at("midautumn")) return "midautumn";
+  } else {
+    const l = lunarOf(d), t = lunarOf(new Date(d.getTime() + 86400000));
+    if (l){
+      if ((l.m === 1 && l.d <= 5) || (t && t.m === 1 && t.d === 1)) return "cny";
+      if (l.m === 1 && l.d === 15) return "lantern";
+      if (l.m === 5 && l.d === 5) return "duanwu";
+      if (l.m === 8 && l.d === 15) return "midautumn";
+    }
+  }
+  if ((m === 12 && day === 31) || (m === 1 && day === 1)) return "newyear";
+  if (m === 2 && day === 14) return "valentine";
+  if (m === 10 && day === 31) return "halloween";
+  if (m === 12 && (day === 24 || day === 25)) return "xmas";
+  return "";
+}
+// 網址加 ?time=night&fest=xmas&season=winter 可以預覽主題（測試用）
+const THEME_PREVIEW = (() => { try{ return Object.fromEntries(new URLSearchParams(location.search)); }catch(e){ return {}; } })();
+function themeNow(d = new Date()){
+  const h = d.getHours(), mo = d.getMonth() + 1;
+  return {
+    time:   THEME_PREVIEW.time   || (h >= 5 && h < 11 ? "morning" : h >= 11 && h < 17 ? "noon" : h >= 17 && h < 19 ? "dusk" : "night"),
+    season: THEME_PREVIEW.season || (mo >= 3 && mo <= 5 ? "spring" : mo >= 6 && mo <= 8 ? "summer" : mo >= 9 && mo <= 11 ? "autumn" : "winter"),
+    fest:   THEME_PREVIEW.fest !== undefined ? THEME_PREVIEW.fest : festOf(d)
+  };
+}
+
+/* ---------- 盆栽裝扮 ---------- */
+// 平時：季節一件 + 時段一件；節日：整套換成節日裝扮
+const FEST_DECO = {
+  newyear:   { top:"partyhat", rim:"confettiRim" },
+  valentine: { rim:"heartRim", side:"heartBalloon" },
+  halloween: { top:"witchhat", side:"pumpkin" },
+  xmas:      { top:"santahat", rim:"scarf", side:"gift" },
+  cny:       { rim:"fu", side:"oranges" },
+  lantern:   { top:"lanternHat", side:"tangyuan" },
+  duanwu:    { rim:"sachet", side:"zongzi" },
+  midautumn: { top:"pomelohat", side:"mooncake" }
+};
+function decoOf(t){
+  if (t.fest && FEST_DECO[t.fest]) return { ...FEST_DECO[t.fest] };
+  const d = { spring:{ rim:"flowers" }, summer:{ top:"strawhat" }, autumn:{ pot:"maple" }, winter:{ rim:"scarf" } }[t.season] || {};
+  if (t.time === "morning") d.side = "bird";
+  if (t.time === "noon")    d.eyes = "sunglasses";
+  if (t.time === "night")   d.top = "nightcap";
+  return d;
+}
+const DECO = {
+  // 頭頂（畫在植物最上面，會跟著搖）
+  strawhat:  `<ellipse cx="0" cy="0" rx="19" ry="4.5" fill="#e9c46a"/><path d="M-10 0 q0 -14 10 -14 q10 0 10 14z" fill="#f4d67f"/><rect x="-10" y="-5" width="20" height="3.5" fill="#e76f51"/>`,
+  nightcap:  `<path d="M-12 0 Q-7 -20 13 -25 Q4 -12 12 0Z" fill="#7b8ce0"/><circle cx="-4" cy="-9" r="1.6" fill="#fff8" /><circle cx="5" cy="-15" r="1.4" fill="#fff8"/><rect x="-14" y="-3.5" width="28" height="7" rx="3.5" fill="#fff"/><circle cx="13" cy="-25" r="4.5" fill="#fff"/>`,
+  santahat:  `<path d="M-12 0 Q-6 -21 14 -24 Q5 -12 12 0Z" fill="#e63946"/><rect x="-14" y="-3.5" width="28" height="7" rx="3.5" fill="#fff"/><circle cx="14" cy="-24" r="4.5" fill="#fff"/>`,
+  partyhat:  `<path d="M-10 0 L0 -27 L10 0Z" fill="#ffb703"/><path d="M-6.3 -10 L6.3 -10 L4.4 -15 L-4.4 -15Z" fill="#fb5607"/><path d="M-8.5 -3 L8.5 -3 L7.4 -6.5 L-7.4 -6.5Z" fill="#3a86ff"/><circle cx="0" cy="-28" r="3.5" fill="#ff006e"/>`,
+  witchhat:  `<ellipse cx="0" cy="0" rx="19" ry="4" fill="#3d2b56"/><path d="M-10 -1 Q-4 -18 3 -24 Q8 -27 12 -22 Q6 -20 7 -12 L10 -1Z" fill="#4a3468"/><rect x="-10" y="-5" width="20" height="3.5" fill="#f4a261"/>`,
+  pomelohat: `<path d="M-15 1 q0 -20 15 -20 q15 0 15 20z" fill="#cde56a"/><path d="M-15 1 q2 -6 6 -3 q3 -6 9 -2 q6 -4 9 2 q4 -3 6 3z" fill="#f7f3c9"/><path d="M0 -19 q1 -5 4 -6" stroke="#5a8f29" stroke-width="2" fill="none" stroke-linecap="round"/><path d="M3 -24 q6 -3 9 1 q-5 3 -9 -1z" fill="#6fbf3a"/>`,
+  lanternHat:`<path d="M0 -2 V-8" stroke="#8a5a2b" stroke-width="1.5"/><ellipse cx="0" cy="-16" rx="9" ry="8.5" fill="#e63946"/><rect x="-5" y="-26" width="10" height="3" rx="1" fill="#f4c542"/><rect x="-5" y="-8.5" width="10" height="3" rx="1" fill="#f4c542"/><path d="M-4 -16 h8" stroke="#ffd166" stroke-width="1.2"/>`,
+  // 眼睛（畫在盆子的臉上）
+  sunglasses:`<rect x="73" y="174" width="23" height="12" rx="5" fill="#1d2b36"/><rect x="104" y="174" width="23" height="12" rx="5" fill="#1d2b36"/><path d="M96 178 q4 -3 8 0" stroke="#1d2b36" stroke-width="2.5" fill="none"/><path d="M77 177 l6 0" stroke="#ffffff88" stroke-width="2" stroke-linecap="round"/><path d="M108 177 l6 0" stroke="#ffffff88" stroke-width="2" stroke-linecap="round"/>`,
+  // 盆緣
+  flowers:   [[62,148,"#ffb3c6"],[75,145,"#fff"],[138,148,"#ffd6a5"]].map(([x,y,c]) => `<g transform="translate(${x} ${y})">${[0,72,144,216,288].map(a => `<ellipse cx="0" cy="-3.6" rx="2.6" ry="3.6" fill="${c}" transform="rotate(${a})"/>`).join("")}<circle r="2.2" fill="#ffd166"/></g>`).join(""),
+  scarf:     `<rect x="47" y="146" width="106" height="11" rx="5.5" fill="#e63946"/><path d="M60 146 v11 M75 146 v11 M90 146 v11 M105 146 v11 M120 146 v11 M135 146 v11" stroke="#ffffff70" stroke-width="2.5"/><path d="M124 154 l11 1 l3 22 l-11 2z" fill="#d62839"/><path d="M127 179 v4 M131 178.5 v4 M135 178 v4" stroke="#d62839" stroke-width="2" stroke-linecap="round"/>`,
+  confettiRim:[[58,147,"#ff006e"],[70,151,"#3a86ff"],[84,146,"#ffbe0b"],[118,150,"#8338ec"],[131,146,"#fb5607"],[143,151,"#06d6a0"]].map(([x,y,c],i) => `<rect x="${x}" y="${y}" width="5" height="3" rx="1" fill="${c}" transform="rotate(${i*37} ${x} ${y})"/>`).join(""),
+  heartRim:  `<path d="M100 155 C92 149 92 142 96.5 142 C98.5 142 100 144 100 145.5 C100 144 101.5 142 103.5 142 C108 142 108 149 100 155Z" fill="#ff4d6d"/>`,
+  fu:        `<rect x="91" y="140" width="18" height="18" rx="2" fill="#d62828" transform="rotate(45 100 149)"/><text x="100" y="154" text-anchor="middle" font-size="12" font-weight="800" fill="#ffd166" font-family="PingFang TC, Noto Sans TC, sans-serif">福</text>`,
+  sachet:    `<path d="M140 157 v6" stroke="#c1121f" stroke-width="1.5"/><path d="M134 163 h12 l-2 11 q-4 4 -8 0z" fill="#ffb703"/><path d="M135 166 h10" stroke="#e63946" stroke-width="2"/><path d="M140 175 v7" stroke="#e63946" stroke-width="2" stroke-linecap="round"/>`,
+  // 盆身貼紙
+  maple:     `<g transform="translate(64 171) scale(.55)"><path d="M0 -12 L3 -5 L10 -7 L6 0 L12 3 L4 4 L5 11 L0 6 L-5 11 L-4 4 L-12 3 L-6 0 L-10 -7 L-3 -5Z" fill="#e85d04"/><path d="M0 6 v8" stroke="#9c4a0a" stroke-width="2"/></g>`,
+  // 旁邊的小東西
+  bird:      `<g transform="translate(146 136)"><ellipse cx="0" cy="0" rx="8" ry="7" fill="#7cc6fe"/><ellipse cx="1.5" cy="2" rx="4.5" ry="3.5" fill="#e7f6ff"/><circle cx="3" cy="-2" r="1.3" fill="#1d2b36"/><path d="M7.5 -1 l4 1.2 l-4 1.2z" fill="#f4a261"/><path d="M-6 -1 q-6 -1 -8 3 q5 1 8 -1z" fill="#5aa9e6"/><path d="M-1 6.5 v3 M2 6.5 v3" stroke="#f4a261" stroke-width="1.3"/></g>`,
+  heartBalloon:`<path d="M146 150 Q160 125 166 100" stroke="#999" stroke-width="1" fill="none"/><path d="M166 101 C150 90 150 74 159 74 C163 74 166 78 166 81 C166 78 169 74 173 74 C182 74 182 90 166 101Z" fill="#ff4d6d"/><path d="M158 80 q2 -3 5 -2" stroke="#fff9" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+  pumpkin:   `<g transform="translate(170 197)"><path d="M0 -15 q1 -5 4 -6" stroke="#3a5a40" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="-7" cy="0" rx="9" ry="13" fill="#f77f00"/><ellipse cx="7" cy="0" rx="9" ry="13" fill="#f77f00"/><ellipse cx="0" cy="0" rx="8" ry="14" fill="#fb8b24"/><path d="M-8 -4 l3 -4 l3 4z M2 -4 l3 -4 l3 4z" fill="#3d2b1f"/><path d="M-8 4 q8 7 16 0 l-3 2 l-2 -2 l-3 2 l-3 -2 l-2 2z" fill="#3d2b1f"/></g>`,
+  gift:      `<g transform="translate(34 192)"><rect x="-12" y="-6" width="24" height="19" rx="2" fill="#e63946"/><rect x="-13" y="-10" width="26" height="6" rx="2" fill="#d62839"/><rect x="-2.5" y="-10" width="5" height="23" fill="#2a9d8f"/><path d="M0 -10 q-9 -9 -10 -2 q2 3 10 2 q8 1 10 -2 q-1 -7 -10 2z" fill="#2a9d8f"/></g>`,
+  oranges:   [[160,203],[176,205]].map(([x,y]) => `<g transform="translate(${x} ${y})"><circle r="8.5" fill="#f8961e"/><circle cx="-2.5" cy="-2.5" r="2" fill="#ffd29d"/><path d="M0 -8 q4 -4 8 -2 q-4 3 -8 2z" fill="#4c956c"/></g>`).join(""),
+  tangyuan:  `<g transform="translate(168 202)"><circle cx="-5" cy="-6" r="4.5" fill="#fff"/><circle cx="4" cy="-7" r="4.5" fill="#ffc8dd"/><circle cx="0" cy="-3" r="4.5" fill="#fff"/><path d="M-13 -4 h26 q-2 12 -13 12 q-11 0 -13 -12z" fill="#e63946"/><path d="M-13 -4 h26" stroke="#c1121f" stroke-width="2"/></g>`,
+  zongzi:    `<g transform="translate(169 199)"><path d="M0 -15 L13 10 L-13 10Z" fill="#6a994e" stroke="#386641" stroke-width="1.5" stroke-linejoin="round"/><path d="M-8 0 L8 0" stroke="#bc6c25" stroke-width="2"/><path d="M-4 -7 L13 6" stroke="#bc6c25" stroke-width="2"/></g>`,
+  mooncake:  `<g transform="translate(168 201)"><ellipse cx="0" cy="3" rx="13" ry="6" fill="#a0522d"/><rect x="-13" y="-6" width="26" height="9" fill="#c47a3a"/><ellipse cx="0" cy="-6" rx="13" ry="6" fill="#d9944f"/><ellipse cx="0" cy="-6" rx="7" ry="3.2" fill="none" stroke="#a0522d" stroke-width="1.5"/></g>`
+};
+// 旁邊、盆身小物的放大倍數（以各自的底部為中心放大）
+const DECO_SCALE = { bird:[146,143,1.35], pumpkin:[170,211,1.35], gift:[34,211,1.35], oranges:[168,211,1.3], tangyuan:[168,210,1.4], zongzi:[169,209,1.4], mooncake:[168,209,1.4], sachet:[140,157,1.5], maple:[64,171,1.6] };
+function decoSVG(name){
+  const svg = DECO[name]; if (!svg) return "";
+  const k = DECO_SCALE[name];
+  return k ? `<g transform="translate(${k[0]} ${k[1]}) scale(${k[2]}) translate(${-k[0]} ${-k[1]})">${svg}</g>` : svg;
+}
+function topAnchor(stage, mood){
+  if (stage === 0) return [100, 133, 1];
+  const bend = mood === "thirsty" ? 10 : 0, top = 143 - HEIGHT[stage];
+  if (stage === 6) return [100 + bend, top - 26, 1.3];
+  if (stage === 5) return [100 + bend, top - 17, 1.3];
+  return [100 + bend, top + 1, stage <= 2 ? 1 : 1.2];
+}
+
+/* ---------- 天空 ---------- */
+function rnd(seed){ let x = seed; return () => (x = (x * 9301 + 49297) % 233280) / 233280; }
+function cloud(x, y, sc, op, slow){
+  return `<g class="cloud${slow ? " slow" : ""}" style="animation-delay:-${Math.round(x / 4)}s"><g transform="translate(${x} ${y}) scale(${sc})" fill="#fff" opacity="${op}"><ellipse cx="0" cy="0" rx="34" ry="14"/><circle cx="-12" cy="-8" r="13"/><circle cx="9" cy="-12" r="16"/><circle cx="24" cy="-3" r="11"/></g></g>`;
+}
+function skySVG(t){
+  let g = "";
+  const r = rnd(7);
+  if (t.time === "morning"){
+    g += `<circle cx="70" cy="190" r="62" fill="#fff1c9" opacity=".45"/><circle cx="70" cy="190" r="30" fill="#ffd27d"/>`;
+    g += cloud(220, 120, 1, .7, true) + cloud(40, 300, .7, .55, false);
+  } else if (t.time === "noon"){
+    g += `<circle cx="330" cy="92" r="58" fill="#fff7cf" opacity=".5"/><circle cx="330" cy="92" r="28" fill="#ffe17a"/>`;
+    g += cloud(60, 130, 1.1, .95, true) + cloud(250, 230, .8, .9, false) + cloud(-40, 330, .6, .85, false);
+  } else if (t.time === "dusk"){
+    g += `<circle cx="300" cy="300" r="80" fill="#ffb38a" opacity=".35"/><circle cx="300" cy="300" r="36" fill="#ff9a5a"/>`;
+    g += cloud(80, 160, 1, .45, true) + cloud(260, 220, .7, .4, false);
+    for (let i = 0; i < 6; i++) g += `<circle class="star" cx="${Math.round(r()*400)}" cy="${Math.round(r()*120)+10}" r="1.2" fill="#fff" style="animation-delay:${(r()*3).toFixed(1)}s"/>`;
+  } else {
+    for (let i = 0; i < 34; i++) g += `<circle class="star" cx="${Math.round(r()*400)}" cy="${Math.round(r()*420)+10}" r="${(r()*1.3+.6).toFixed(1)}" fill="#fff" style="animation-delay:${(r()*3).toFixed(1)}s"/>`;
+    if (t.fest !== "midautumn" && t.fest !== "halloween")
+      g += `<circle cx="326" cy="96" r="40" fill="#fff3c4" opacity=".12"/><path d="M340 72 a26 26 0 1 0 0 48 a20 20 0 1 1 0 -48z" fill="#fff3c4"/>`;
+  }
+  const f = t.fest, night = t.time === "night";
+  if (f === "midautumn"){
+    g += `<circle cx="310" cy="120" r="70" fill="#fff6d2" opacity="${night ? .18 : .12}"/><circle cx="310" cy="120" r="42" fill="#fff1b8" opacity="${night ? 1 : .75}"/>`
+       + `<g opacity=".35" fill="#d9c27a"><ellipse cx="302" cy="128" rx="9" ry="7"/><ellipse cx="296" cy="117" rx="2.5" ry="7" transform="rotate(-15 296 117)"/><ellipse cx="301" cy="116" rx="2.5" ry="7" transform="rotate(10 301 116)"/><circle cx="314" cy="131" r="3"/></g>`;
+  }
+  if (f === "halloween"){
+    if (night) g += `<circle cx="310" cy="110" r="40" fill="#ffb347" opacity=".9"/>`;
+    for (let i = 0; i < 4; i++){
+      const y = 120 + i * 55, d = (i * 3.3).toFixed(1);
+      g += `<g class="bat" style="animation-delay:-${d}s"><path transform="translate(0 ${y})" d="M0 0 q-6 -7 -14 -3 q4 1 4 5 q-4 -2 -8 1 q8 3 18 -3 q10 6 18 3 q-4 -3 -8 -1 q0 -4 4 -5 q-8 -4 -14 3z" fill="#120a1c"/></g>`;
+    }
+  }
+  if (f === "xmas" || (t.season === "winter" && night && f === "newyear")){
+    for (let i = 0; i < 26; i++) g += `<circle class="snow" cx="${Math.round(r()*400)}" cy="0" r="${(r()*2+1.5).toFixed(1)}" fill="#fff" opacity=".9" style="animation-delay:-${(r()*9).toFixed(1)}s;animation-duration:${(7+r()*5).toFixed(1)}s"/>`;
+  }
+  if (f === "newyear"){
+    [[90,140,"#ff006e"],[300,110,"#ffbe0b"],[200,240,"#3a86ff"],[340,280,"#06d6a0"]].forEach(([x,y,c],i) => {
+      let rays = "";
+      for (let k = 0; k < 12; k++){ const a = k * Math.PI / 6; rays += `<line x1="${x}" y1="${y}" x2="${(x + Math.cos(a)*34).toFixed(1)}" y2="${(y + Math.sin(a)*34).toFixed(1)}" stroke="${c}" stroke-width="2.5" stroke-linecap="round"/>`; }
+      g += `<g class="burst" style="animation-delay:${(i*.7).toFixed(1)}s">${rays}</g>`;
+    });
+  }
+  if (f === "valentine"){
+    for (let i = 0; i < 9; i++){
+      const x = Math.round(r()*380)+10, y = 520 + Math.round(r()*120), s = (r()*.6+.6).toFixed(2);
+      g += `<g class="floatup" style="animation-delay:-${(r()*11).toFixed(1)}s"><path transform="translate(${x} ${y}) scale(${s})" d="M0 8 C-9 2 -9 -6 -4 -6 C-2 -6 0 -4 0 -2 C0 -4 2 -6 4 -6 C9 -6 9 2 0 8Z" fill="#ff4d6d" opacity=".75"/></g>`;
+    }
+  }
+  if (f === "cny" || f === "lantern"){
+    [[40,0,60],[360,0,80],[120,0,30]].forEach(([x,,len],i) => {
+      g += `<g class="swing" style="animation-delay:-${i*1.1}s"><line x1="${x}" y1="0" x2="${x}" y2="${len}" stroke="#8a5a2b" stroke-width="1.5"/><g transform="translate(${x} ${len + 18})"><ellipse rx="17" ry="16" fill="#e63946"/><rect x="-9" y="-19" width="18" height="5" rx="1.5" fill="#f4c542"/><rect x="-9" y="14" width="18" height="5" rx="1.5" fill="#f4c542"/><path d="M-16 0 h32 M0 -16 v32" stroke="#c1121f" stroke-width="1.2" opacity=".6"/><path d="M0 19 v12" stroke="#f4c542" stroke-width="2"/></g></g>`;
+    });
+    if (f === "lantern"){
+      for (let i = 0; i < 6; i++){
+        const x = Math.round(r()*360)+20, y = 560 + Math.round(r()*80);
+        g += `<g class="floatup" style="animation-delay:-${(r()*11).toFixed(1)}s"><g transform="translate(${x} ${y})"><rect x="-7" y="-10" width="14" height="18" rx="4" fill="#ffb703" opacity=".9"/><rect x="-4" y="-4" width="8" height="8" rx="2" fill="#fff3b0"/></g></g>`;
+      }
+    }
+  }
+  return `<svg viewBox="0 0 400 700" preserveAspectRatio="xMidYMin slice">${g}</svg>`;
+}
+let themeKey = "", curTheme = themeNow(), festGreeted = "";
+function applyTheme(){
+  const t = themeNow(), key = `${t.time}|${t.season}|${t.fest}`;
+  curTheme = t;
+  if (key === themeKey) return;
+  themeKey = key;
+  const root = document.documentElement;
+  root.dataset.time = t.time; root.dataset.fest = t.fest || "";
+  $("#sky").innerHTML = skySVG(t);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = getComputedStyle(root).getPropertyValue("--sky1").trim() || "#eaf7ff";
+  lastPlantKey = "";   // 裝扮可能變了，重畫植物
+  if (t.fest && festGreeted !== dayKey() + t.fest){ festGreeted = dayKey() + t.fest; setTimeout(() => say(pick(LINES.fest[t.fest])), 400); }
+}
+
 function face(mood){
   const cheeks = `<ellipse cx="78" cy="188" rx="6" ry="3.5" fill="#ff9d8a" opacity=".7"/><ellipse cx="122" cy="188" rx="6" ry="3.5" fill="#ff9d8a" opacity=".7"/>`;
   const st = `stroke="#5a2e1c" stroke-width="3" fill="none" stroke-linecap="round"`;
@@ -770,7 +1001,7 @@ function face(mood){
     default:        return `<circle cx="85" cy="181" r="3.6" fill="#5a2e1c"/><circle cx="115" cy="181" r="3.6" fill="#5a2e1c"/>${cheeks}<path d="M92 189 q8 7 16 0" ${st}/>`;
   }
 }
-function plantSVG(stage, mood){
+function plantSVG(stage, mood, deco = {}){
   const droop = mood === "thirsty";
   const H = HEIGHT[stage], top = 143 - H;
   let g = "";
@@ -792,13 +1023,22 @@ function plantSVG(stage, mood){
       g += `<g transform="translate(${100+bend} ${top-8})">${petals}<circle r="6.5" fill="#ffd34d"/></g>`;
     }
   }
+  if (deco.top && DECO[deco.top]){
+    const [x, y, sc] = topAnchor(stage, mood);
+    g += `<g transform="translate(${x} ${y}) scale(${sc})">${DECO[deco.top]}</g>`;
+  }
   return `
     <ellipse cx="100" cy="211" rx="56" ry="4" fill="#00000014"/>
     <ellipse cx="100" cy="142" rx="43" ry="7" fill="#6b4a2f"/>
     <g class="sway">${g}</g>
+    ${deco.side && deco.side !== "bird" ? decoSVG(deco.side) : ""}
     <path d="M58 154 H142 L133 208 Q132 211 128 211 H72 Q68 211 67 208Z" fill="#ee8b5d"/>
     <rect x="50" y="140" width="100" height="18" rx="7" fill="#f6a173"/>
-    ${face(mood)}`;
+    ${deco.pot ? decoSVG(deco.pot) : ""}
+    ${face(mood)}
+    ${deco.eyes && DECO[deco.eyes] && mood !== "sleepy" ? DECO[deco.eyes] : ""}
+    ${deco.rim ? decoSVG(deco.rim) : ""}
+    ${deco.side === "bird" ? decoSVG("bird") : ""}`;
 }
 
 /* ================== 首頁 ================== */
@@ -827,10 +1067,12 @@ function moodLine(){
   if (m === "thirsty") return pick(activeLines("overdue"));
   if (data.state.count >= goal() && goal() > 0) return pick(LINES.goal);
   if (slots().every(x => x <= nowMin())) return pick(LINES.allDone);
+  if (curTheme.fest && Math.random() < .5) return pick(LINES.fest[curTheme.fest]);
   return pick(LINES.idle);
 }
 
 function render(){
+  applyTheme();
   $("#standBtn").hidden = standDue() === null;
   const s = data.state, G = goal(), n = nowMin();
   const d = new Date();
@@ -847,10 +1089,11 @@ function render(){
   const pct = G ? Math.min(s.count / G, 1) : 0;
   document.documentElement.style.setProperty("--level", (6 + pct * 58) + "vh");
 
-  const st = stageOf(s.total), md = mood(), key = st + md;
+  const deco = decoOf(curTheme);
+  const st = stageOf(s.total), md = mood(), key = st + md + JSON.stringify(deco);
   if (key !== lastPlantKey){
     const p = $("#plant");
-    p.innerHTML = plantSVG(st, md);
+    p.innerHTML = plantSVG(st, md, deco);
     p.classList.toggle("thirsty", md === "thirsty");
     lastPlantKey = key;
   }
