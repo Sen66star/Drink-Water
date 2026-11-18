@@ -102,25 +102,44 @@ body{transition:background .8s}
 .sway{transform-origin:100px 145px;animation:sway 4s ease-in-out infinite}
 @keyframes sway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
 .thirsty .sway{animation-duration:7s;filter:saturate(.55) brightness(.95)}
-/* ---------- 小雞夥伴 ---------- */
-.yard{position:relative;width:min(94vw,400px);display:flex;justify-content:center}
-.pet{position:absolute;bottom:0;left:0;width:min(17vw,68px);padding:0;background:none;border:0;z-index:1;-webkit-tap-highlight-color:transparent;transition:left 2s ease-in-out}
-.pet .shadow{position:absolute;left:14%;right:14%;bottom:-2px;height:7px;border-radius:50%;background:#1a3c5a26}
-.pet .body{display:block;transform-origin:50% 100%;animation:petBreathe 2.6s ease-in-out infinite}
+/* ---------- 小雞夥伴（2.5D：有前後深度的地面） ---------- */
+.yard{position:relative;width:min(94vw,400px);display:flex;justify-content:center;padding-bottom:var(--ry,24px)}
+.yard #plant{position:relative;z-index:2}
+.floor{position:absolute;left:50%;bottom:0;transform:translateX(-50%);border-radius:50%;z-index:0;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 45%,var(--floor1,#ffffffb8) 0%,var(--floor2,#ffffff55) 55%,transparent 72%)}
+:root[data-time=night] .floor{--floor1:#ffffff2e;--floor2:#ffffff12}
+:root[data-time=dusk] .floor{--floor1:#ffffff80;--floor2:#ffffff33}
+.pet{position:absolute;left:0;bottom:0;width:min(17vw,68px);padding:0;background:none;border:0;z-index:3;-webkit-tap-highlight-color:transparent;transform-origin:50% 100%;will-change:transform,left,bottom}
+.pet.back{z-index:1}
+.pet .shadow{position:absolute;left:12%;right:12%;bottom:-3px;height:8px;border-radius:50%;background:#1a3c5a2e;transition:all .4s}
+.pet .body{display:block;position:relative;transform-origin:50% 100%;animation:petBreathe 2.6s ease-in-out infinite}
 .pet img{width:100%;display:block;pointer-events:none;transition:transform .18s ease}
 .pet.flip img{transform:scaleX(-1)}
 .pet.walk .body{animation:petWaddle .38s ease-in-out infinite}
+.pet.run .body{animation:petWaddle .22s ease-in-out infinite}
 .pet.hop .body{animation:petHop .65s ease}
-.pet.sleep .body{animation:petBreathe 4.5s ease-in-out infinite}
-.pet .zz{position:absolute;right:-4px;top:-6px;font-size:13px;font-weight:800;color:var(--sky-sub,#7aa6c8);opacity:0}
+/* 睡覺：側躺在地上 */
+.pet .lie{display:block;transform-origin:50% 100%;transition:transform .7s cubic-bezier(.4,1.4,.5,1)}
+.pet.sleep .lie{transform:translate(16%,0) rotate(-82deg) scale(.92)}
+.pet.sleep .body{animation:petSleep 4.2s ease-in-out infinite}
+.pet.sleep .shadow{left:-62%;right:28%;height:10px}
+.pet.sleep .zz{right:auto;left:-18%;top:2%}
+.pet.sleep .zz.z2{left:-30%}
+.pet .lid{position:absolute;border-radius:50%;background:#f6e7d4;opacity:0;transition:opacity .4s;box-shadow:inset 0 -2px 0 #d9bfa0}
+.pet .lid::after{content:"";position:absolute;left:18%;right:18%;top:46%;height:30%;border-bottom:3px solid #6b4a32;border-radius:0 0 50% 50%}
+.pet.sleep .lid{opacity:1}
+.pet .zz{position:absolute;right:-8px;top:-4px;font-size:14px;font-weight:800;color:var(--sky-sub,#7aa6c8);opacity:0}
+.pet .zz.z2{right:-16px;font-size:11px}
 .pet.sleep .zz{animation:petZz 3s ease-in-out infinite}
-.petsay{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:13px;font-weight:800;color:var(--ink);background:#fff;border-radius:10px;padding:3px 8px;box-shadow:0 3px 10px #0002;animation:petSay 1.6s ease forwards;pointer-events:none}
+.pet.sleep .zz.z2{animation-delay:1.5s}
+.petsay{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:13px;font-weight:800;color:var(--ink);background:#fff;border-radius:10px;padding:3px 8px;box-shadow:0 3px 10px #0002;animation:petSay 1.6s ease forwards;pointer-events:none;z-index:2}
 @keyframes petBreathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.035,.965)}}
+@keyframes petSleep{0%,100%{transform:scale(1,1)}50%{transform:scale(1.04,.97)}}
 @keyframes petWaddle{0%,100%{transform:rotate(-6deg) translateY(0)}50%{transform:rotate(6deg) translateY(-3px)}}
 @keyframes petHop{0%,100%{transform:translateY(0) scale(1)}20%{transform:translateY(0) scale(1.1,.86)}50%{transform:translateY(-28px) scale(.94,1.07)}80%{transform:translateY(0) scale(1.07,.92)}}
-@keyframes petZz{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(8px,-16px)}}
+@keyframes petZz{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-18px)}}
 @keyframes petSay{0%{opacity:0;transform:translate(-50%,6px)}15%{opacity:1;transform:translate(-50%,-4px)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-14px)}}
-@media (prefers-reduced-motion: reduce){.pet,.pet .body{animation:none!important;transition:none!important}}
+@media (prefers-reduced-motion: reduce){.pet .body,.pet .lie{animation:none!important;transition:none!important}}
 .plant-meta{margin-top:8px;background:#ffffffc4;border-radius:14px;padding:7px 14px;font-size:13px;color:var(--sub);text-align:center;min-width:200px}
 .plant-meta b{color:var(--ink)}
 .bar{height:6px;background:#d6e8f5;border-radius:3px;margin-top:6px;overflow:hidden}
@@ -520,9 +539,11 @@ input[type=text]{width:140px;text-align:right}
   <div class="stage-area">
     <div class="bubble" id="bubble"></div>
     <div class="yard" id="yard">
+      <div class="floor" id="floor"></div>
       <svg id="plant" viewBox="0 -30 200 245" role="img" aria-label="小植物"></svg>
-      <button class="pet" id="petY" aria-label="小黃雞"><span class="shadow"></span><span class="body"><img src="pets/chick-yellow.webp" alt=""></span><span class="zz">z</span></button>
-      <button class="pet" id="petW" aria-label="小白雞"><span class="shadow"></span><span class="body"><img src="pets/chick-white.webp" alt=""></span><span class="zz">z</span></button>
+      <button class="pet" id="petY" aria-label="小黃雞"><span class="shadow"></span><span class="lie"><span class="body"><img src="pets/chick-yellow.webp" alt=""></span></span><span class="zz">z</span><span class="zz z2">z</span></button>
+      <button class="pet" id="petW" aria-label="小白雞"><span class="shadow"></span><span class="lie"><span class="body"><img src="pets/chick-white.webp" alt="">
+        <span class="lid" style="left:23%;top:30%;width:31%;height:27%"></span><span class="lid" style="left:50%;top:30%;width:31%;height:27%"></span></span></span><span class="zz">z</span><span class="zz z2">z</span></button>
     </div>
     <div class="plant-meta">
       <div id="plantInfo"></div>
@@ -2119,49 +2140,116 @@ async function showInviteLanding(){
 }
 function maybeAcceptFromUrl(){ const el = $("#famCode"); if (INVITE_CODE && el && !el.value){ el.value = INVITE_CODE; el.scrollIntoView({ block:"center" }); } }
 
-/* ================== 小雞夥伴：在盆栽兩邊走來走去 ================== */
+/* ================== 小雞夥伴（2.5D） ==================
+   位置用「地面座標」：x＝距離盆栽中心的水平位置（px），d＝深度（0 最前面、1 最後面、0.5 跟盆栽同一排）
+   越後面越小、越靠上；d > 0.5 時畫在盆栽後面，會被盆栽擋住。
+   平常各自在左右兩邊散步；偶爾一起繞盆栽轉圈，或一隻追另一隻。晚上躺在地上睡。 */
 const PETS = [
-  { el: null, id: "#petY", side: "L", x: null, say: ["啾！", "啾啾～", "嘿嘿 💛", "喝水沒？", "我也要喝！"] },
-  { el: null, id: "#petW", side: "R", x: null, say: ["咕？", "……（盯）", "你喝水了嗎？", "嗯哼", "眨眼眨眼"] }
+  { id:"#petY", side:-1, say:["啾！","啾啾～","嘿嘿 💛","喝水沒？","我也要喝！"] },
+  { id:"#petW", side: 1, say:["咕？","……（盯）","你喝水了嗎？","嗯哼","眨眼眨眼"] }
 ];
 const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
-function petZone(p){
-  const yard = $("#yard").getBoundingClientRect(), plant = $("#plant").getBoundingClientRect(), w = p.el.offsetWidth || 64;
-  const potL = plant.left - yard.left + plant.width * .25, potR = plant.left - yard.left + plant.width * .75;   // 盆子在 SVG 的 25%～75%
-  return p.side === "L" ? [4, Math.max(4, potL - w - 2)] : [Math.min(yard.width - w - 4, potR + 2), yard.width - w - 4];
+let petGeo = null, petEvent = false;
+function petMeasure(){
+  const yard = $("#yard"), plant = $("#plant");
+  const yw = yard.clientWidth, pw = plant.getBoundingClientRect().width;
+  const cx = yw / 2, rx = Math.min(yw * .46, pw * .98), ry = Math.round(rx * .3);
+  yard.style.setProperty("--ry", ry + "px");
+  const fl = $("#floor"); fl.style.width = rx * 2.3 + "px"; fl.style.height = ry * 2.4 + "px"; fl.style.bottom = -ry * .2 + "px";
+  petGeo = { yw, cx, rx, ry, potHalf: pw * .27 };
 }
-function petPlace(p, x, instant){
-  const [a, b] = petZone(p); x = Math.min(b, Math.max(a, x));
-  if (p.x !== null && !instant){
-    p.el.classList.toggle("flip", x < p.x);   // 往哪走就面向哪
-    const dist = Math.abs(x - p.x), dur = Math.max(.6, dist / 38);
-    p.el.style.transition = `left ${dur}s ease-in-out`;
-    p.el.classList.add("walk");
-    clearTimeout(p.walkT); p.walkT = setTimeout(() => p.el.classList.remove("walk"), dur * 1000);
-  } else p.el.style.transition = "none";
-  p.x = x; p.el.style.left = x + "px";
+function petDraw(p){
+  const g = petGeo, s = 1.08 - .36 * p.d;
+  const w = p.el.offsetWidth || 64;
+  p.el.style.left = (g.cx + p.x - w / 2) + "px";
+  p.el.style.bottom = (2 * g.ry * p.d) + "px";
+  p.el.style.transform = `scale(${s.toFixed(3)})`;
+  p.el.classList.toggle("back", p.d > .5);
+}
+const tween = (ms, fn) => new Promise(res => {
+  const t0 = performance.now();
+  const step = now => { const t = Math.min(1, (now - t0) / ms); fn(t); t < 1 ? requestAnimationFrame(step) : res(); };
+  requestAnimationFrame(step);
+});
+const easeIO = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+async function petMove(p, x, d, speed = 40, cls = "walk"){
+  const x0 = p.x, d0 = p.d, dist = Math.hypot(x - x0, (d - d0) * petGeo.ry * 3);
+  if (dist < 2) return;
+  if (Math.abs(x - x0) > 2) p.el.classList.toggle("flip", x < x0);   // 往哪走就面向哪
+  p.el.classList.add(cls);
+  await tween(Math.max(500, dist / speed * 1000), t => { const e = easeIO(t); p.x = x0 + (x - x0) * e; p.d = d0 + (d - d0) * e; petDraw(p); });
+  p.el.classList.remove(cls);
+}
+function petHome(p){   // 自己那一側的隨機位置（不會碰到盆栽）
+  const g = petGeo, inner = g.potHalf + 34, outer = Math.max(inner + 10, g.yw / 2 - 30);
+  return [p.side * (inner + Math.random() * (outer - inner)), Math.random() * .42];
 }
 function petHop(p){ p.el.classList.remove("hop"); void p.el.offsetWidth; p.el.classList.add("hop"); setTimeout(() => p.el.classList.remove("hop"), 700); }
-function petAct(p){
-  const asleep = curTheme.time === "night";
-  p.el.classList.toggle("sleep", asleep);
-  if (!document.hidden && !asleep && !reduceMotion && !$("#settings").classList.contains("open")){
-    const r = Math.random(), [a, b] = petZone(p);
-    if (r < .55) petPlace(p, a + Math.random() * (b - a));
-    else if (r < .8) petHop(p);
-    else p.el.classList.toggle("flip");
-  }
-  p.timer = setTimeout(() => petAct(p), 2500 + Math.random() * 4500);
-}
 function petSay(p, text){
   const t = document.createElement("span"); t.className = "petsay"; t.textContent = text;
   p.el.appendChild(t); setTimeout(() => t.remove(), 1700);
 }
+const onOrbit = (th, k = 1) => [petGeo.rx * .86 * k * Math.sin(th), (1 - Math.cos(th)) / 2];   // 繞盆栽的橢圓
+async function petCircle(){   // 兩隻一起繞盆栽轉一圈
+  const [a, b] = PETS;
+  await Promise.all([petMove(a, ...onOrbit(-Math.PI / 2)), petMove(b, ...onOrbit(Math.PI / 2))]);
+  const dur = 7000, last = { a:a.x, b:b.x };
+  [a, b].forEach(p => p.el.classList.add("walk"));
+  await tween(dur, t => {
+    const th = t * Math.PI * 2;
+    [[a, -Math.PI / 2], [b, Math.PI / 2]].forEach(([p, o]) => {
+      [p.x, p.d] = onOrbit(o + th); petDraw(p);
+      const k = p === a ? "a" : "b"; if (Math.abs(p.x - last[k]) > .5) p.el.classList.toggle("flip", p.x < last[k]); last[k] = p.x;
+    });
+  });
+  [a, b].forEach(p => { p.el.classList.remove("walk"); petHop(p); });
+}
+async function petChase(){   // 一隻在前面跑，另一隻追，追到一起跳
+  const [lead, chase] = Math.random() < .5 ? PETS : [PETS[1], PETS[0]];
+  const start = -Math.PI / 2, gap0 = 1.3, gap1 = .22, turns = 1.4, dur = 7500;
+  await Promise.all([petMove(lead, ...onOrbit(start)), petMove(chase, ...onOrbit(start - gap0))]);
+  const last = new Map(PETS.map(p => [p, p.x]));
+  [lead, chase].forEach(p => p.el.classList.add("run"));
+  await tween(dur, t => {
+    const th = start + t * turns * Math.PI * 2, gap = gap0 + (gap1 - gap0) * easeIO(t);
+    [[lead, th], [chase, th - gap]].forEach(([p, a]) => {
+      [p.x, p.d] = onOrbit(a); petDraw(p);
+      if (Math.abs(p.x - last.get(p)) > .5) p.el.classList.toggle("flip", p.x < last.get(p)); last.set(p, p.x);
+    });
+  });
+  [lead, chase].forEach(p => { p.el.classList.remove("run"); petHop(p); });
+  petSay(chase, "抓到了！"); setTimeout(() => petSay(lead, "啾啾！"), 500);
+}
+async function petEventRun(){
+  petEvent = true;
+  try{
+    await (Math.random() < .5 ? petCircle() : petChase());
+    await new Promise(r => setTimeout(r, 800));
+    await Promise.all(PETS.map(p => petMove(p, ...petHome(p))));
+  } finally { petEvent = false; }
+}
+function petAct(p){
+  const asleep = curTheme.time === "night";
+  if (asleep !== p.el.classList.contains("sleep")){
+    p.el.classList.toggle("sleep", asleep);
+    if (asleep && !petEvent){ const [x] = petHome(p); petMove(p, x, .3 + Math.random() * .15); }   // 找個稍微後面的地方躺下
+  }
+  const busy = document.hidden || reduceMotion || petEvent || $("#settings").classList.contains("open") || $("#family").classList.contains("open");
+  if (!busy && !asleep){
+    const r = Math.random();
+    if (p === PETS[0] && r < .12) petEventRun();   // 偶爾：一起繞圈或追逐
+    else if (r < .6) petMove(p, ...petHome(p));
+    else if (r < .82) petHop(p);
+    else p.el.classList.toggle("flip");
+  }
+  setTimeout(() => petAct(p), 3000 + Math.random() * 4500);
+}
 function initPets(){
+  petMeasure();
   PETS.forEach((p, i) => {
     p.el = $(p.id);
-    const [a, b] = petZone(p);
-    petPlace(p, p.side === "L" ? b : a, true);
+    [p.x, p.d] = [p.side * (petGeo.potHalf + 46), .2];
+    petDraw(p);
     p.el.addEventListener("click", e => {
       e.stopPropagation();
       if (p.el.classList.contains("sleep")){ petSay(p, "Zz…別吵"); return; }
@@ -2169,7 +2257,7 @@ function initPets(){
     });
     setTimeout(() => petAct(p), 1500 + i * 1700);
   });
-  addEventListener("resize", () => PETS.forEach(p => petPlace(p, p.x, true)));
+  addEventListener("resize", () => { petMeasure(); PETS.forEach(petDraw); });
 }
 
 /* ================== 綁定事件 ================== */
