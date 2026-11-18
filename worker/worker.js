@@ -251,8 +251,10 @@ async function ensureTable(env) {
     env.DB.prepare("CREATE TABLE IF NOT EXISTS invites (code TEXT PRIMARY KEY, from_id TEXT NOT NULL, type TEXT NOT NULL, created INTEGER NOT NULL)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS links (id TEXT PRIMARY KEY, a TEXT NOT NULL, b TEXT NOT NULL, type TEXT NOT NULL, nick_a TEXT NOT NULL DEFAULT '', nick_b TEXT NOT NULL DEFAULT '', poke_a INTEGER NOT NULL DEFAULT 0, poke_b INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)"),
     env.DB.prepare("CREATE TABLE IF NOT EXISTS assigned (id TEXT PRIMARY KEY, link TEXT NOT NULL, from_id TEXT NOT NULL, to_id TEXT NOT NULL, habit TEXT NOT NULL, paused INTEGER NOT NULL DEFAULT 0, created INTEGER NOT NULL)"),
-    env.DB.prepare("CREATE TABLE IF NOT EXISTS donelog (hid TEXT NOT NULL, day TEXT NOT NULL, done TEXT NOT NULL, PRIMARY KEY (hid, day))")
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS donelog (hid TEXT NOT NULL, day TEXT NOT NULL, done TEXT NOT NULL, PRIMARY KEY (hid, day))"),
+    env.DB.prepare("CREATE TABLE IF NOT EXISTS stickers (id INTEGER PRIMARY KEY AUTOINCREMENT, link TEXT NOT NULL, from_id TEXT NOT NULL, to_id TEXT NOT NULL, sticker TEXT NOT NULL, at INTEGER NOT NULL)")
   ]);
+  try { await env.DB.prepare("ALTER TABLE assigned ADD COLUMN snooze TEXT NOT NULL DEFAULT ''").run(); } catch (e) {}   // 「等等我」延後提醒
   tableReady = true;
 }
 
@@ -270,7 +272,7 @@ function buildMessage(row, s, st, now, kind, pool, withSit) {
     const h = withSit.h, cat = kind === "habit" ? "remind" : "overdue";
     const own = h.lines && Array.isArray(h.lines[cat]) ? h.lines[cat].filter(Boolean) : [];
     const title = fill(pick(own.length ? own : LINES.habit[cat]).replace(/\{item\}/g, h.name));
-    return { title, body: withSit.tail || "", badge: owe, tag: "habit-" + h.id };
+    return { title, body: withSit.tail || "", badge: owe, tag: "habit-" + h.id };   // tail：第二行（合併、誰設的、等等我）
   }
   const lines = kind === "test" ? LINES.test : activeLines(pool, owe > 1 ? "overdue" : "remind", now.day);
   const body = withSit ? fill(pick(activeLines(pool, "sitTail", now.day))) : "";
@@ -290,7 +292,7 @@ async function runSchedule(env) {
       const now = localNow(row.tz);
       // 家人幫我設的提醒，跟自己的習慣一起排
       const mine = (fam.byTo[row.id] || []).filter(a => !a.paused);
-      if (mine.length) s.habits = [...(s.habits || []), ...mine.map(a => ({ ...a.habit, id: a.id, on: true, from: fam.nickFor(a.link, row.id) }))];
+      if (mine.length) s.habits = [...(s.habits || []), ...mine.map(a => ({ ...a.habit, id: a.id, on: true, from: fam.nickFor(a.link, row.id), snooze: a.snooze }))];
       const water = slots(s), sits = sitSlots(s, now);
       const fill = t => String(t).replace(/\{name\}/g, s.plantName || "小芽");
       const recent = Date.now() - (Number(st.lastDrink) || 0) < 15 * 60 * 1000;   // 剛喝過就不吵
@@ -323,9 +325,15 @@ async function runSchedule(env) {
               await send(buildMessage(row, s, st, now, "habit", pool, { h, tail }));
             }
           }
+          // 按了「等等我」：時間到再提醒一次，原本 30 分鐘後的催促就不送
+          const sz = h.snooze && h.snooze.day === now.day && h.snooze.slot === m ? h.snooze : null;
+          if (sz && now.min >= sz.until && !fired[k + " snz"]) {
+            fired[k + " snz"] = 1; fired[nk] = 1; firedChanged = true;
+            if (now.min - sz.until <= 5 && !isDone) await send(buildMessage(row, s, st, now, "habit-nag", pool, { h, tail: "說好的待會兒，就是現在喔" }));
+          }
           if (m + NAG <= now.min && !fired[nk]) {
             fired[nk] = 1; firedChanged = true;
-            if (now.min - (m + NAG) <= 5 && !isDone) await send(buildMessage(row, s, st, now, "habit-nag", pool, { h }));
+            if (now.min - (m + NAG) <= 5 && !isDone && !sz) await send(buildMessage(row, s, st, now, "habit-nag", pool, { h }));
           }
         }
       }
@@ -466,6 +474,9 @@ async function generateLines(env, name, plant) {
 
 /* ================== 家園（家人提醒） ================== */
 const FAM_MAX = 5, ASSIGN_MAX = 6;
+// 貼圖代號 → 通知裡顯示的文字（要跟網頁的 STICKERS 一致）
+const STICKERS = { s01:"早安 🌅", s02:"晚安 🌙", s03:"想你 🥺", s04:"愛你 ❤️", s05:"抱抱 🤗", s06:"加油 💪", s07:"辛苦了 🍵", s08:"謝謝 🙏", s09:"哈哈哈 😂", s10:"讚 👍",
+  s11:"吃飯沒 🍚", s12:"多喝水 💧", s13:"早點睡 😴", s14:"收到 🫡", s15:"OK 👌", s16:"哭哭 😭", s17:"生氣氣 😤", s18:"在嗎？ 👀", s19:"出門小心 ☂️", s20:"到家了 🏠" };
 const CODE_CHARS = "0123456789";   // 邀請碼只用數字，長輩比較好輸入
 const rid = (n, chars = "abcdefghijkmnpqrstuvwxyz23456789") => Array.from(crypto.getRandomValues(new Uint8Array(n)), x => chars[x % chars.length]).join("");
 function cleanHabit(h) {
@@ -494,7 +505,8 @@ async function loadFamily(env) {
   const byTo = {}, byFrom = {};
   for (const x of a.results || []) {
     let habit = {}; try { habit = JSON.parse(x.habit); } catch (e) {}
-    const item = { id: x.id, link: x.link, from: x.from_id, to: x.to_id, paused: !!x.paused, created: x.created, habit };
+    let snooze = null; try { snooze = x.snooze ? JSON.parse(x.snooze) : null; } catch (e) {}
+    const item = { id: x.id, link: x.link, from: x.from_id, to: x.to_id, paused: !!x.paused, created: x.created, snooze, habit };
     (byTo[x.to_id] = byTo[x.to_id] || []).push(item);
     (byFrom[x.from_id] = byFrom[x.from_id] || []).push(item);
   }
@@ -548,7 +560,8 @@ function plantOf(row) {
   const now = localNow(row.tz);
   const past = slots(s).filter(m => m <= now.min).length;
   const count = st.day === now.day ? (Number(st.count) || 0) : 0;
-  return { total: Number(st.total) || 0, owe: Math.max(0, past - count), plantName: s.plantName || "小芽" };
+  return { total: Number(st.total) || 0, owe: Math.max(0, past - count), plantName: s.plantName || "小芽",
+    lastDrink: Number(st.lastDrink) || 0, lastHabit: st.lastHabit || null };
 }
 
 async function familyApi(action, b, env, h) {
@@ -602,12 +615,17 @@ async function familyApi(action, b, env, h) {
         assigned: manage ? (fam.byFrom[me] || []).filter(a => a.link === l.id).map(a => {
           const log = { ...(logBy[a.id] || {}) };
           if (row) { const d = localNow(row.tz).day; log[d] = doneToday(row, a.id, d); }
-          return { id: a.id, paused: a.paused, created: a.created, ...a.habit, log };
+          const snz = a.snooze && row && a.snooze.day === localNow(row.tz).day ? a.snooze : null;
+          return { id: a.id, paused: a.paused, created: a.created, snooze: snz, ...a.habit, log };
         }) : []
       };
     });
-    const forMe = (fam.byTo[me] || []).map(a => ({ id: a.id, paused: a.paused, from: fam.nickFor(a.link, me), link: a.link, ...a.habit }));
-    return json({ me: { name: user.name, summary: user.summary }, family, forMe }, 200, h);
+    const forMe = (fam.byTo[me] || []).map(a => ({ id: a.id, paused: a.paused, from: fam.nickFor(a.link, me), link: a.link, snooze: a.snooze, ...a.habit }));
+    // 最近 30 天、每位家人最多 20 則貼圖
+    const linkIds = mineLinks.map(l => l.id);
+    const stk = linkIds.length ? (await env.DB.prepare(`SELECT * FROM stickers WHERE link IN (${linkIds.map(() => "?").join(",")}) AND at > ? ORDER BY at DESC LIMIT 100`).bind(...linkIds, now - 30 * 86400000).all()).results || [] : [];
+    const stickers = stk.map(x => ({ link: x.link, mine: x.from_id === me, sticker: x.sticker, at: x.at }));
+    return json({ me: { name: user.name, summary: user.summary }, family, forMe, stickers, now }, 200, h);
   }
 
   if (action === "invite") {
@@ -656,6 +674,7 @@ async function familyApi(action, b, env, h) {
     await env.DB.batch([
       env.DB.prepare("DELETE FROM donelog WHERE hid IN (SELECT id FROM assigned WHERE link = ?)").bind(l.id),
       env.DB.prepare("DELETE FROM assigned WHERE link = ?").bind(l.id),
+      env.DB.prepare("DELETE FROM stickers WHERE link = ?").bind(l.id),
       env.DB.prepare("DELETE FROM links WHERE id = ?").bind(l.id)
     ]);
     return json({ ok: true }, 200, h);
@@ -688,6 +707,50 @@ async function familyApi(action, b, env, h) {
       if (a.to_id !== me) return json({ error: "只有收到提醒的人可以暫停" }, 403, h);
       await env.DB.prepare("UPDATE assigned SET paused = ? WHERE id = ?").bind(b.paused ? 1 : 0, a.id).run();
     }
+    return json({ ok: true }, 200, h);
+  }
+
+  // 家人按「我完成啦／喝水啦」或「等等我呀」：通知設提醒的人
+  if (action === "report") {
+    const a = await env.DB.prepare("SELECT * FROM assigned WHERE id = ?").bind(String(b.habitId || "")).first();
+    if (!a || a.to_id !== me) return json({ error: "找不到這個提醒" }, 404, h);
+    const lk = await env.DB.prepare("SELECT * FROM links WHERE id = ?").bind(a.link).first();
+    if (!lk) return json({ error: "找不到這位家人" }, 404, h);
+    let habit = {}; try { habit = JSON.parse(a.habit); } catch (e) {}
+    const who = myNickFor(lk, a.from_id) || user.name;   // 設提醒的人怎麼稱呼我
+    const label = `${habit.emoji ? habit.emoji + " " : ""}${habit.name || "提醒"}`;
+    let msg;
+    if (b.kind === "later") {
+      const row = await env.DB.prepare("SELECT tz FROM subs WHERE id = ?").bind(me).first();
+      const t = localNow(row ? row.tz : "Asia/Taipei");
+      const slot = Number.isFinite(Number(b.slot)) ? Number(b.slot) : t.min;
+      const until = Math.min(t.min + 30, 1439);
+      await env.DB.prepare("UPDATE assigned SET snooze = ? WHERE id = ?").bind(JSON.stringify({ day: t.day, slot, until }), a.id).run();
+      msg = { title: `${who}：等等我呀！待會兒馬上做`, body: `${label}・${fmt(until)} 會再提醒一次`, tag: "fam-report" };
+    } else {
+      const water = /水/.test(habit.name || "");
+      msg = { title: `${who}：${water ? "喝水啦！" : "我完成啦！"} ✓`, body: label, tag: "fam-report" };
+    }
+    const row = await env.DB.prepare("SELECT * FROM subs WHERE id = ?").bind(a.from_id).first();
+    if (row) await sendPush(JSON.parse(row.sub), msg, env).catch(() => {});
+    return json({ ok: true }, 200, h);
+  }
+
+  // 傳貼圖：只要是家人都可以，每人每小時最多 30 張
+  if (action === "sticker") {
+    if (!l) return json({ error: "找不到這位家人" }, 404, h);
+    const st = STICKERS[String(b.sticker || "")];
+    if (!st) return json({ error: "沒有這個貼圖" }, 400, h);
+    const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM stickers WHERE from_id = ? AND at > ?").bind(me, now - 3600000).first()).n;
+    if (n >= 30) return json({ error: "傳太多了，休息一下再傳" }, 429, h);
+    const to = otherOf(l, me);
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO stickers (link, from_id, to_id, sticker, at) VALUES (?, ?, ?, ?, ?)").bind(l.id, me, to, String(b.sticker), now),
+      env.DB.prepare("DELETE FROM stickers WHERE at < ?").bind(now - 30 * 86400000)
+    ]);
+    const row = await env.DB.prepare("SELECT * FROM subs WHERE id = ?").bind(to).first();
+    const who = myNickFor(l, to) || user.name;
+    if (row) await sendPush(JSON.parse(row.sub), { title: `${who}傳了貼圖：${st}`, body: "", tag: "sticker" }, env).catch(() => {});
     return json({ ok: true }, 200, h);
   }
 
@@ -794,7 +857,8 @@ async function handle(req, env) {
         if (Array.isArray(v)) hd[String(k).slice(0, 24)] = v.map(x => String(x).slice(0, 20)).slice(0, 12);
       }
     }
-    const state = { day: String(st.day || "").slice(0, 10), count: Number(st.count) || 0, lastDrink: Number(st.lastDrink) || 0, habitDone: hd, total: Number(st.total) || 0 };
+    const lh = st.lastHabit && typeof st.lastHabit === "object" ? { id: String(st.lastHabit.id || "").slice(0, 24), at: Number(st.lastHabit.at) || 0 } : null;
+    const state = { day: String(st.day || "").slice(0, 10), count: Number(st.count) || 0, lastDrink: Number(st.lastDrink) || 0, habitDone: hd, total: Number(st.total) || 0, lastHabit: lh };
     let tz = String(b.tz || "Asia/Taipei").slice(0, 64);
     try { new Intl.DateTimeFormat("en", { timeZone: tz }); } catch (e) { tz = "Asia/Taipei"; }
     await env.DB.prepare(`INSERT INTO subs (id, sub, settings, state, tz, updated) VALUES (?1, ?2, ?3, ?4, ?5, ?6)

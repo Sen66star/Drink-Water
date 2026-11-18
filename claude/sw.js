@@ -1,6 +1,6 @@
 // 喝水啦 service worker：離線快取 + 伺服器推播 + 圖示紅點
-const CACHE = "hoshuila-v12";
-const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png", "./lines.json"];
+const CACHE = "hoshuila-v13";
+const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png", "./lines.json", "./pets/chick-yellow.webp", "./pets/chick-white.webp"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
@@ -60,7 +60,7 @@ self.addEventListener("notificationclick", e => {
   e.waitUntil(
     clients.matchAll({ type: "window", includeUncontrolled: true }).then(list => {
       for (const c of list) if ("focus" in c) return c.focus();
-      return clients.openWindow("./");
+      return clients.openWindow("./?from=push");   // 點通知打開時跳過開場動畫
     })
   );
 });

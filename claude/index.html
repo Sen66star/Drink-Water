@@ -102,6 +102,25 @@ body{transition:background .8s}
 .sway{transform-origin:100px 145px;animation:sway 4s ease-in-out infinite}
 @keyframes sway{0%,100%{transform:rotate(-2deg)}50%{transform:rotate(2deg)}}
 .thirsty .sway{animation-duration:7s;filter:saturate(.55) brightness(.95)}
+/* ---------- 小雞夥伴 ---------- */
+.yard{position:relative;width:min(94vw,400px);display:flex;justify-content:center}
+.pet{position:absolute;bottom:0;left:0;width:min(17vw,68px);padding:0;background:none;border:0;z-index:1;-webkit-tap-highlight-color:transparent;transition:left 2s ease-in-out}
+.pet .shadow{position:absolute;left:14%;right:14%;bottom:-2px;height:7px;border-radius:50%;background:#1a3c5a26}
+.pet .body{display:block;transform-origin:50% 100%;animation:petBreathe 2.6s ease-in-out infinite}
+.pet img{width:100%;display:block;pointer-events:none;transition:transform .18s ease}
+.pet.flip img{transform:scaleX(-1)}
+.pet.walk .body{animation:petWaddle .38s ease-in-out infinite}
+.pet.hop .body{animation:petHop .65s ease}
+.pet.sleep .body{animation:petBreathe 4.5s ease-in-out infinite}
+.pet .zz{position:absolute;right:-4px;top:-6px;font-size:13px;font-weight:800;color:var(--sky-sub,#7aa6c8);opacity:0}
+.pet.sleep .zz{animation:petZz 3s ease-in-out infinite}
+.petsay{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:13px;font-weight:800;color:var(--ink);background:#fff;border-radius:10px;padding:3px 8px;box-shadow:0 3px 10px #0002;animation:petSay 1.6s ease forwards;pointer-events:none}
+@keyframes petBreathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.035,.965)}}
+@keyframes petWaddle{0%,100%{transform:rotate(-6deg) translateY(0)}50%{transform:rotate(6deg) translateY(-3px)}}
+@keyframes petHop{0%,100%{transform:translateY(0) scale(1)}20%{transform:translateY(0) scale(1.1,.86)}50%{transform:translateY(-28px) scale(.94,1.07)}80%{transform:translateY(0) scale(1.07,.92)}}
+@keyframes petZz{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(8px,-16px)}}
+@keyframes petSay{0%{opacity:0;transform:translate(-50%,6px)}15%{opacity:1;transform:translate(-50%,-4px)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-14px)}}
+@media (prefers-reduced-motion: reduce){.pet,.pet .body{animation:none!important;transition:none!important}}
 .plant-meta{margin-top:8px;background:#ffffffc4;border-radius:14px;padding:7px 14px;font-size:13px;color:var(--sub);text-align:center;min-width:200px}
 .plant-meta b{color:var(--ink)}
 .bar{height:6px;background:#d6e8f5;border-radius:3px;margin-top:6px;overflow:hidden}
@@ -198,6 +217,35 @@ body{transition:background .8s}
 .invite-box .code{font-size:30px;font-weight:900;letter-spacing:6px;color:var(--f-accent)}
 .invite-box .url{font-size:12px;color:var(--f-sub);word-break:break-all;margin-top:4px}
 .fform{background:#fff9f2;border:1px dashed #ecd2b6;border-radius:14px;padding:6px 12px 12px;margin-top:10px}
+/* 家人任務的回覆選單、貼圖 */
+#actSheet{position:fixed;inset:0;z-index:8;background:#0006;display:none;align-items:flex-end;justify-content:center;padding:16px}
+#actSheet.show{display:flex}
+#actSheet .box{background:#fff;border-radius:22px;padding:18px 16px calc(env(safe-area-inset-bottom) + 14px);width:100%;max-width:420px;animation:sheetUp .25s ease}
+@keyframes sheetUp{from{transform:translateY(40px);opacity:0}to{transform:none;opacity:1}}
+#actSheet h3{margin:0 0 4px;font-size:18px;text-align:center}
+#actSheet p{margin:0 0 14px;text-align:center;color:var(--sub);font-size:14px}
+#actSheet .btn{margin-top:10px}
+.gstatus{font-size:12px;color:var(--f-sub);text-align:right;margin:-6px 4px 10px}
+.gplant.jump svg{animation:bounce .6s ease 2}
+.gplant .st.fresh{background:#e3f6e6;color:#2b9a48}
+.stk{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:100%;aspect-ratio:1;border-radius:16px;background:#fff7ee;border:1px solid #f3e1cc;position:relative;overflow:hidden}
+.stk img{position:absolute;inset:4px;width:calc(100% - 8px);height:calc(100% - 8px);object-fit:contain}
+.stk b{font-size:28px;line-height:1}
+.stk small{font-size:11.5px;font-weight:800;color:var(--f-ink)}
+.stk.img b,.stk.img small{visibility:hidden}
+.stkgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:10px 0 4px}
+.stkgrid button{padding:0;background:none}
+.stkgrid button:active{transform:scale(.92)}
+.chat{display:flex;flex-direction:column;gap:8px;margin:10px 0 4px}
+.chat .m{display:flex;align-items:flex-end;gap:6px}
+.chat .m.mine{flex-direction:row-reverse}
+.chat .m .stk{width:64px}
+.chat .m small.t{font-size:11px;color:var(--f-sub)}
+#stkPop{position:fixed;inset:0;z-index:9;display:none;align-items:center;justify-content:center;background:#0004;pointer-events:none}
+#stkPop.show{display:flex}
+#stkPop .in{width:min(56vw,220px);text-align:center;animation:stkPop 1.8s ease forwards}
+#stkPop .who{display:inline-block;margin-top:10px;color:#fff;font-weight:800;font-size:15px;background:#4a3226d9;border-radius:999px;padding:5px 14px}
+@keyframes stkPop{0%{transform:scale(.3);opacity:0}25%{transform:scale(1.08);opacity:1}35%{transform:scale(1)}85%{opacity:1}100%{opacity:0;transform:scale(.95)}}
 /* 邀請連結落地頁 */
 #inviteLanding{position:fixed;inset:0;z-index:9;background:#fbf4eaf2;display:none;align-items:center;justify-content:center;padding:20px}
 #inviteLanding.show{display:flex}
@@ -264,8 +312,184 @@ input[type=text]{width:140px;text-align:right}
   *{animation:none!important;transition:none!important}
 }
 </style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Huninn&display=swap" rel="stylesheet">
+<style>
+/* ---------- 開場動畫（海豹） ---------- */
+#splash{position:fixed;inset:0;z-index:50;background:#F3E6D8;display:flex;align-items:center;justify-content:center;transition:opacity .5s ease;
+  font-family:"Huninn","PingFang TC","Noto Sans TC",sans-serif}
+#splash.out{opacity:0;pointer-events:none}
+#splash svg{width:min(90vw,calc((100vh - 60px) * .75),600px);height:auto;display:block;border-radius:18px;box-shadow:0 10px 30px rgba(120,70,50,.18);background:#FFF6EC}
+#splash .skip{position:absolute;top:calc(env(safe-area-inset-top) + 12px);right:16px;font:inherit;font-size:16px;color:#D9433A;background:#FFF6EC;border:2px solid #D9433A;border-radius:999px;padding:7px 16px;cursor:pointer;z-index:1}
+#splash .ln{fill:none;stroke:#D9433A;stroke-linecap:round;stroke-linejoin:round}
+#splash .w3{stroke-width:6}#splash .w2{stroke-width:4.5}#splash .w1{stroke-width:3.2}
+#splash .eye,#splash .brow,#splash .wl,#splash .wr{transform-box:fill-box}
+#splash .eye{transform-origin:center}
+#splash .sfill,#sp-text,#sp-deco{opacity:0}
+</style>
 </head>
 <body>
+<div id="splash" aria-label="開場動畫">
+  <button class="skip" id="sp-skip" type="button">跳過 ›</button>
+  <svg viewBox="0 0 600 800" role="img" aria-label="手繪小圓臉：嗨! 喝水啦">
+    <defs>
+      <filter id="sp-boil" x="-5%" y="-5%" width="110%" height="110%">
+        <feTurbulence id="sp-turb" type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="1" result="n"/>
+        <feDisplacementMap id="sp-disp" in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+      <pattern id="sp-dots" width="28" height="28" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="2" fill="#F4D9C8"/></pattern>
+    </defs>
+    <rect x="0" y="0" width="600" height="800" fill="url(#sp-dots)"/>
+    <rect x="22" y="22" width="556" height="756" rx="26" fill="none" stroke="#F2B8A8" stroke-width="3" stroke-dasharray="2 12" stroke-linecap="round"/>
+    <g id="sp-deco" fill="#F4A79B">
+      <path class="tw" d="M86,120 l6,14 l14,6 l-14,6 l-6,14 l-6,-14 l-14,-6 l14,-6 Z"/>
+      <path class="tw" d="M520,170 l4,10 l10,4 l-10,4 l-4,10 l-4,-10 l-10,-4 l10,-4 Z"/>
+      <path class="tw" d="M510,690 l5,12 l12,5 l-12,5 l-5,12 l-5,-12 l-12,-5 l12,-5 Z"/>
+      <path class="tw" d="M70,720 c-8,-10 -24,-2 -14,12 l14,14 l14,-14 c10,-14 -6,-22 -14,-12 Z" fill="#F7C2B8"/>
+      <path class="tw" d="M540,96 c-6,-8 -18,-2 -11,9 l11,11 l11,-11 c7,-11 -5,-17 -11,-9 Z" fill="#F7C2B8"/>
+    </g>
+    <g filter="url(#sp-boil)">
+      <g id="sp-bubble">
+        <path class="ln w2" d="M166,62 C220,38 380,38 434,62 C468,80 468,140 434,156 C412,166 340,170 314,168 L300,198 L288,168 C250,168 190,166 166,156 C132,140 132,80 166,62"/>
+        <text id="sp-text" x="300" y="126" text-anchor="middle" font-size="46" fill="#D9433A" font-weight="700">嗨! 喝水啦</text>
+      </g>
+      <g id="sp-face">
+        <g class="sfill">
+          <ellipse cx="112" cy="440" rx="34" ry="20" fill="#F9C9C0"/>
+          <ellipse cx="468" cy="388" rx="32" ry="19" fill="#F9C9C0"/>
+          <circle cx="300" cy="440" r="15" fill="#D9433A"/>
+        </g>
+        <path class="ln w3" d="M110,660 C66,530 72,372 184,292 C252,244 360,236 440,262 C482,276 506,298 520,322"/>
+        <g class="eye">
+          <ellipse class="sfill" cx="217" cy="380" rx="60" ry="68" fill="#D9433A"/>
+          <ellipse class="sfill" cx="232" cy="344" rx="31" ry="33" fill="#FFFFFF"/>
+          <ellipse class="ln w2" cx="217" cy="380" rx="60" ry="68"/>
+          <ellipse class="ln w1" cx="232" cy="344" rx="31" ry="33"/>
+        </g>
+        <g class="eye">
+          <ellipse class="sfill" cx="370" cy="372" rx="55" ry="64" fill="#D9433A"/>
+          <ellipse class="sfill" cx="362" cy="334" rx="31" ry="30" fill="#FFFFFF"/>
+          <ellipse class="ln w2" cx="370" cy="372" rx="55" ry="64"/>
+          <ellipse class="ln w1" cx="362" cy="334" rx="31" ry="30"/>
+        </g>
+        <g class="brow">
+          <circle class="ln w1" cx="262" cy="276" r="11"/>
+          <circle class="ln w1" cx="356" cy="264" r="11"/>
+        </g>
+        <circle class="ln w2" cx="300" cy="440" r="14"/>
+        <path class="ln w2" d="M140,506 C150,546 192,562 232,553 C268,545 292,532 300,518"/>
+        <path class="ln w2" d="M300,518 C308,532 332,546 370,553 C410,560 452,544 462,503"/>
+        <circle class="ln w1" cx="166" cy="510" r="1.5"/>
+        <circle class="ln w1" cx="440" cy="498" r="1.5"/>
+        <g class="wl">
+          <path class="ln w1" d="M150,478 C112,480 76,486 44,494"/>
+          <path class="ln w1" d="M150,498 C112,505 78,515 48,530"/>
+          <path class="ln w1" d="M156,518 C122,544 94,574 66,602"/>
+        </g>
+        <g class="wr">
+          <path class="ln w1" d="M446,478 C486,470 516,465 546,461"/>
+          <path class="ln w1" d="M448,496 C490,494 520,497 552,504"/>
+          <path class="ln w1" d="M446,512 C486,526 516,541 546,557"/>
+        </g>
+        <path class="ln w1" d="M100,428 L96,446"/><path class="ln w1" d="M113,426 L109,444"/><path class="ln w1" d="M126,428 L122,446"/>
+        <path class="ln w1" d="M458,376 L455,394"/><path class="ln w1" d="M470,374 L467,392"/><path class="ln w1" d="M482,376 L479,394"/>
+      </g>
+    </g>
+    <circle id="sp-tip" r="5" fill="#D9433A" opacity="0"/>
+  </svg>
+</div>
+<script>
+/* 開場動畫：從頭一筆一筆畫，畫完填色、角色動起來後自動進入；右上角可跳過。
+   點通知（?from=push）或邀請連結打開時不播，免得耽誤正事。 */
+(() => {
+  const root = document.getElementById("splash");
+  const q = new URLSearchParams(location.search);
+  const end = () => { if (root.dataset.done) return; root.dataset.done = 1; run++; root.classList.add("out"); setTimeout(() => root.remove(), 550); };
+  let run = 0;
+  if (q.get("from") === "push" || q.get("invite")) { root.remove(); return; }
+  const $ = s => root.querySelector(s), $$ = s => [...root.querySelectorAll(s)];
+  const face = $("#sp-face"), bubble = $("#sp-bubble"), tip = $("#sp-tip");
+  const eyes = $$(".eye"), brow = $(".brow"), wl = $(".wl"), wr = $(".wr");
+  const fills = $$(".sfill"), text = $("#sp-text"), deco = $("#sp-deco"), twinkles = $$(".tw");
+  const turb = $("#sp-turb"), disp = $("#sp-disp");
+  const order = $$("#sp-face .ln").concat($$("#sp-bubble .ln"));
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const ease = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
+  const frame = () => new Promise(r => requestAnimationFrame(r));
+  const wait = ms => new Promise(r => setTimeout(r, ms));
+  $("#sp-skip").onclick = end;
+  order.forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = L; });
+  async function drawStroke(p, id){
+    const L = p.getTotalLength(), dur = Math.max(160, L * 2.6), t0 = performance.now();
+    while (true){
+      if (id !== run) return;
+      const t = Math.min(1, (performance.now() - t0) / dur), d = L * ease(t);
+      p.style.strokeDashoffset = L - d;
+      const pt = p.getPointAtLength(d); tip.setAttribute("cx", pt.x); tip.setAttribute("cy", pt.y);
+      if (t >= 1){ p.style.strokeDasharray = "none"; break; }
+      await frame();
+    }
+  }
+  async function fadeIn(id){
+    const t0 = performance.now();
+    while (true){
+      if (id !== run) return;
+      const t = Math.min(1, (performance.now() - t0) / 1200), o = ease(t), pop = t < 1 ? o + Math.sin(t * Math.PI) * .15 : 1;
+      fills.forEach(e => e.style.opacity = o); deco.style.opacity = o; text.style.opacity = o;
+      text.setAttribute("transform", `translate(300 110) scale(${.6 + .4 * pop}) translate(-300 -110)`);
+      if (t >= 1) break;
+      await frame();
+    }
+  }
+  function life(id){
+    const FPS = 12, step = 1000 / FPS, blinkSeq = [.5, .08, .08, .5, 1];
+    let last = 0, f = 0, boil = 0, blinkF = -1, nextBlink = performance.now() + 600, twitchF = -1, nextTwitch = performance.now() + 900;
+    const loop = now => {
+      if (id !== run) return;
+      requestAnimationFrame(loop);
+      if (now - last < step) return;
+      last = now; f++;
+      boil = Math.min(2.4, boil + .15); disp.setAttribute("scale", boil.toFixed(2)); turb.setAttribute("seed", (f % 4) + 1);
+      const b = (1 - Math.cos(f / FPS * 2 * Math.PI / 3.4)) / 2;
+      face.setAttribute("transform", `translate(300 640) scale(${1 + .008 * b} ${1 + .018 * b}) translate(-300 -640)`);
+      bubble.setAttribute("transform", `translate(0 ${Math.round(Math.sin(f / FPS * 2 * Math.PI / 2.6) * 3)})`);
+      twinkles.forEach((s, i) => s.style.opacity = ((f + i * 5) % 20) < 3 ? .35 : 1);
+      if (blinkF < 0 && now >= nextBlink) blinkF = 0;
+      if (blinkF >= 0){
+        eyes.forEach(e => e.style.transform = `scaleY(${blinkSeq[blinkF]})`);
+        brow.setAttribute("transform", `translate(0 ${blinkF > 0 && blinkF < 4 ? -4 : 0})`);
+        if (++blinkF >= blinkSeq.length){ blinkF = -1; brow.removeAttribute("transform"); nextBlink = now + 2200 + Math.random() * 3000; }
+      }
+      if (twitchF < 0 && now >= nextTwitch) twitchF = 0;
+      if (twitchF >= 0){
+        const a = [4, -3, 3, -2, 0][twitchF];
+        wl.setAttribute("transform", `rotate(${a} 152 498)`); wr.setAttribute("transform", `rotate(${-a} 448 494)`);
+        if (++twitchF >= 5){ twitchF = -1; nextTwitch = now + 3000 + Math.random() * 3500; }
+      }
+    };
+    requestAnimationFrame(loop);
+  }
+  (async () => {
+    const id = ++run;
+    if (reduce){
+      order.forEach(p => { p.style.strokeDasharray = "none"; p.style.strokeDashoffset = 0; });
+      fills.forEach(e => e.style.opacity = 1); deco.style.opacity = 1; text.style.opacity = 1;
+      await wait(1500); end(); return;
+    }
+    await wait(300);
+    tip.setAttribute("opacity", 1);
+    for (const p of order){ if (id !== run) return; await drawStroke(p, id); await wait(60 + Math.random() * 70); }
+    if (id !== run) return;
+    tip.setAttribute("opacity", 0);
+    await wait(250); await fadeIn(id);
+    if (id !== run) return;
+    life(id);
+    await wait(1800);   // 動起來給大家看一下再進入
+    if (id === run) end();
+  })();
+})();
+</script>
 
 <div id="sky" aria-hidden="true"></div>
 <div id="water" aria-hidden="true">
@@ -295,7 +519,11 @@ input[type=text]{width:140px;text-align:right}
 
   <div class="stage-area">
     <div class="bubble" id="bubble"></div>
-    <svg id="plant" viewBox="0 -30 200 245" role="img" aria-label="小植物"></svg>
+    <div class="yard" id="yard">
+      <svg id="plant" viewBox="0 -30 200 245" role="img" aria-label="小植物"></svg>
+      <button class="pet" id="petY" aria-label="小黃雞"><span class="shadow"></span><span class="body"><img src="pets/chick-yellow.webp" alt=""></span><span class="zz">z</span></button>
+      <button class="pet" id="petW" aria-label="小白雞"><span class="shadow"></span><span class="body"><img src="pets/chick-white.webp" alt=""></span><span class="zz">z</span></button>
+    </div>
     <div class="plant-meta">
       <div id="plantInfo"></div>
       <div class="bar"><i id="plantBar"></i></div>
@@ -320,6 +548,11 @@ input[type=text]{width:140px;text-align:right}
     <div id="famBody"></div>
   </div>
 </section>
+
+<!-- ---------- 家人任務的回覆選單 ---------- -->
+<div id="actSheet" role="dialog" aria-label="回覆家人"><div class="box" id="actBox"></div></div>
+<!-- ---------- 收到貼圖時跳出來 ---------- -->
+<div id="stkPop" aria-hidden="true"><div class="in" id="stkPopIn"></div></div>
 
 <!-- ---------- 邀請連結落地頁（在 Safari 打開邀請連結時） ---------- -->
 <div id="inviteLanding" role="dialog" aria-label="家人邀請"><div class="box" id="inviteBox"></div></div>
@@ -702,7 +935,7 @@ async function syncNow(keepalive){
                   sitOn:s.sitOn, sitMode:s.sitMode, sitInterval:s.sitInterval, sitStart:s.sitStart, sitEnd:s.sitEnd,
                   sitTimes:s.sitTimes, sitDays:s.sitDays,
                   habits:(s.habits||[]).map(h => ({ id:h.id, name:h.name, emoji:h.emoji, on:h.on, days:h.days, times:h.times, lines:h.lines })) },
-      state: { day:st.day, count:st.count, lastDrink:st.lastDrink, habitDone:todayDone(), total:st.total }
+      state: { day:st.day, count:st.count, lastDrink:st.lastDrink, habitDone:todayDone(), total:st.total, lastHabit:st.lastHabit || null }
     }, keepalive);
   }catch(e){ console.warn("sync failed", e); }
 }
@@ -1191,7 +1424,7 @@ function render(){
 function renderChips(){
   const box = $("#habitChips");
   const list = allHabits().filter(h => habitSlots(h).length);
-  const key = JSON.stringify(list.map(h => [h.id, h.emoji, h.name, habitStatus(h)]));
+  const key = JSON.stringify(list.map(h => [h.id, h.emoji, h.name, habitStatus(h), h.snooze]));
   if (box.dataset.key === key) return;
   box.dataset.key = key;
   box.innerHTML = "";
@@ -1199,9 +1432,10 @@ function renderChips(){
     const st = habitStatus(h);
     const b = document.createElement("button");
     b.className = "hchip" + (st.allDone ? " done" : st.due ? " due" : "");
-    const tail = st.allDone ? "✓" : st.total > 1 ? `${st.done}/${st.total}` : st.due ? "做了嗎？" : st.next !== undefined ? fmt(st.next) : "";
+    const snz = h.snooze && h.snooze.day === dayKey() && !st.allDone ? h.snooze : null;
+    const tail = st.allDone ? "✓" : snz ? `等一下 ${fmt(snz.until)}` : st.total > 1 ? `${st.done}/${st.total}` : st.due ? "做了嗎？" : st.next !== undefined ? fmt(st.next) : "";
     b.innerHTML = `<span>${h.emoji ? h.emoji + " " : ""}${h.name}</span>${tail ? `<span class="t">${tail}</span>` : ""}`;
-    b.addEventListener("click", () => markHabit(h));
+    b.addEventListener("click", () => h.from && !st.allDone ? openReply(h) : markHabit(h));
     box.appendChild(b);
   });
 }
@@ -1237,6 +1471,7 @@ function markHabit(h){
   s.habitDone = todayDone();
   undoSnap = { total:s.total, habitDone:JSON.parse(JSON.stringify(s.habitDone)) };
   (s.habitDone[h.id] = s.habitDone[h.id] || []).push(habitKey(h, slot));
+  s.lastHabit = { id:h.id, at:Date.now() };
   const before = stageOf(s.total); s.total++;
   save();
   cheerUntil = Date.now() + 2500;
@@ -1536,9 +1771,60 @@ function renderPush(){
 /* ================== 家園 ================== */
 const FAM_KEY = "hoshuila-fam";
 let fam = (() => { try{ return JSON.parse(localStorage.getItem(FAM_KEY)) || null; }catch(e){ return null; } })();
-let famSel = null, famForm = null, famInvite = null, famBusy = false;
+let famSel = null, famForm = null, famInvite = null, famBusy = false, famUpdated = 0, famTimer = null;
+const famSeenAct = {};   // 每位家人上次看到的動態時間，用來讓盆栽跳一下
 const famSeenKey = "hoshuila-fam-seen";
-function famSig(f){ return f ? JSON.stringify([f.family.map(x => x.link), f.forMe.map(x => x.id + x.name)]) : ""; }
+function famSig(f){ return f ? JSON.stringify([f.family.map(x => x.link), f.forMe.map(x => x.id + x.name), (f.stickers || []).filter(x => !x.mine).map(x => x.at)[0] || 0]) : ""; }
+/* ---------- 貼圖 ---------- */
+// 圖片放在 stickers/s01.png～s20.png；還沒有圖片時先用 emoji 代替（圖片到了把 STICKER_IMG 改成 true）
+const STICKER_IMG = false;
+const STICKERS = [
+  ["s01","早安","🌅"],["s02","晚安","🌙"],["s03","想你","🥺"],["s04","愛你","❤️"],["s05","抱抱","🤗"],
+  ["s06","加油","💪"],["s07","辛苦了","🍵"],["s08","謝謝","🙏"],["s09","哈哈哈","😂"],["s10","讚","👍"],
+  ["s11","吃飯沒","🍚"],["s12","多喝水","💧"],["s13","早點睡","😴"],["s14","收到","🫡"],["s15","OK","👌"],
+  ["s16","哭哭","😭"],["s17","生氣氣","😤"],["s18","在嗎？","👀"],["s19","出門小心","☂️"],["s20","到家了","🏠"]
+];
+const STK = Object.fromEntries(STICKERS.map(([id, label, emo]) => [id, { label, emo }]));
+function stkHTML(id){
+  const s = STK[id] || { label:"貼圖", emo:"💌" };
+  return `<span class="stk${STICKER_IMG ? " img" : ""}">${STICKER_IMG ? `<img src="stickers/${id}.png" alt="${s.label}">` : ""}<b>${s.emo}</b><small>${s.label}</small></span>`;
+}
+let famStkOpen = false;
+function stickerPop(x, who){
+  $("#stkPopIn").innerHTML = stkHTML(x.sticker) + `<div class="who">${esc(who)} 傳來的</div>`;
+  const el = $("#stkPop"); el.classList.remove("show"); void el.offsetWidth; el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), 1900);
+}
+/* ---------- 家人設的任務：我完成啦／等等我呀 ---------- */
+function openReply(h){
+  const st = habitStatus(h), water = /水/.test(h.name);
+  const slot = habitSlots(h).find(m => m <= nowMin() && !isDone(h, m)) ?? habitSlots(h).find(m => !isDone(h, m));
+  $("#actBox").innerHTML = `<h3>${h.emoji ? h.emoji + " " : ""}${esc(h.name)}</h3>
+    <p>${esc(h.from)}幫你設的提醒${st.total > 1 ? `・今天 ${st.done}/${st.total}` : ""}</p>
+    <button class="btn primary" id="actDone">${water ? "喝水啦 💧" : "我完成啦 ✓"}</button>
+    <button class="btn soft" id="actLater">等等我呀！待會兒馬上做</button>
+    <button class="btn" id="actCancel" style="background:none;color:var(--sub)">取消</button>`;
+  $("#actSheet").classList.add("show");
+  const close = () => $("#actSheet").classList.remove("show");
+  $("#actCancel").onclick = close;
+  $("#actSheet").onclick = e => { if (e.target.id === "actSheet") close(); };
+  $("#actDone").onclick = async () => {
+    close(); markHabit(h);
+    await syncNow();
+    try{ await api("/family/report", { id:deviceId(), habitId:h.id, kind:"done" }); showToast(`已告訴${h.from}：${water ? "喝水啦" : "我完成啦"}！`, false); }catch(e){}
+  };
+  $("#actLater").onclick = async () => {
+    close();
+    try{
+      await api("/family/report", { id:deviceId(), habitId:h.id, kind:"later", slot });
+      const a = (data.settings.assigned || []).find(x => x.id === h.id);
+      if (a){ a.snooze = { day:dayKey(), slot, until:Math.min(nowMin() + 30, 1439) }; save(); }
+      say(`好，${fmt(Math.min(nowMin() + 30, 1439))} 再叫你，說話要算話喔 😤`);
+      showToast(`已告訴${h.from}：等等我呀！`, false);
+      render();
+    }catch(e){ alert(e.message || e); }
+  };
+}
 function famDot(){
   let seen = ""; try{ seen = localStorage.getItem(famSeenKey) || ""; }catch(e){}
   $("#openFamily").classList.toggle("new", !!fam && famSig(fam) !== seen && !$("#family").classList.contains("open"));
@@ -1552,7 +1838,8 @@ async function famLoad(){
     try{ localStorage.setItem(FAM_KEY, JSON.stringify(fam)); }catch(e){}
     // 家人幫我設的提醒，存進設定讓排程和首頁用得到
     const was = JSON.stringify(data.settings.assigned || []);
-    data.settings.assigned = j.forMe.map(a => ({ id:a.id, name:a.name, emoji:a.emoji, days:a.days, times:a.times, lines:a.lines, paused:a.paused, from:a.from }));
+    data.settings.assigned = j.forMe.map(a => ({ id:a.id, name:a.name, emoji:a.emoji, days:a.days, times:a.times, lines:a.lines, paused:a.paused, from:a.from, snooze:a.snooze || null }));
+    famUpdated = Date.now();
     if (JSON.stringify(data.settings.assigned) !== was){ try{ localStorage.setItem(LS_KEY, JSON.stringify(data)); }catch(e){} render(); }
   }catch(e){
     if (String(e.message).includes("名字")) fam = { needName:true, family:[], forMe:[] };
@@ -1560,8 +1847,22 @@ async function famLoad(){
   famDot();
   if ($("#family").classList.contains("open")) famRender();
 }
-function openFamily(){ $("#family").classList.add("open"); famRender(); famLoad().then(famMarkSeen); }
-function closeFamily(){ $("#family").classList.remove("open"); famForm = null; famDot(); render(); }
+function openFamily(){
+  $("#family").classList.add("open"); famRender();
+  famLoad().then(() => { famShowNewStickers(); famMarkSeen(); });
+  clearInterval(famTimer);
+  famTimer = setInterval(() => { if (!document.hidden && $("#family").classList.contains("open")) famLoad(); }, 15000);   // 停在家園時每 15 秒更新
+}
+function closeFamily(){ $("#family").classList.remove("open"); clearInterval(famTimer); famForm = null; famStkOpen = false; famDot(); render(); }
+function famShowNewStickers(){
+  let seen = 0; try{ seen = Number(localStorage.getItem("hoshuila-stk-seen")) || 0; }catch(e){}
+  const got = (fam && fam.stickers || []).filter(x => !x.mine && x.at > seen);
+  if (got.length){
+    const x = got[0], f = fam.family.find(y => y.link === x.link);
+    stickerPop(x, f ? (f.nick || f.name) : "家人");
+    try{ localStorage.setItem("hoshuila-stk-seen", String(got[0].at)); }catch(e){}
+  }
+}
 async function famCall(path, body, okMsg){
   if (famBusy) return null;
   famBusy = true;
@@ -1580,6 +1881,7 @@ function habitToday(a, f){
   const today = f.today || dayKey();
   const wd = famDayList(today).at(-1).wd;
   if (a.paused) return { cls:"off", text:"已暫停" };
+  if (a.snooze && a.snooze.day === today && !((a.log && a.log[today]) || []).includes(a.snooze.slot)) return { cls:"wait", text:`等一下（${fmt(a.snooze.until)} 再提醒）` };
   if (!(a.days||[]).includes(wd)) return { cls:"off", text:"今天沒有" };
   const done = (a.log && a.log[today]) || [], n = nowMin();
   const slots = [...new Set(a.times.map(toMin))].sort((x,y)=>x-y);
@@ -1616,12 +1918,17 @@ function famRender(){
   list.forEach(f => {
     const pl = f.plant, st = pl ? stageOf(pl.total) : 1, md = pl && pl.owe > 0 ? "thirsty" : "happy";
     const done = f.assigned.filter(a => habitToday(a, f).cls === "ok").length, live = f.assigned.filter(a => !a.paused && habitToday(a, f).cls !== "off").length;
-    const tag = f.role === "cared" ? "在照顧你" : !f.push ? "還沒開推播" : live ? `今天 ${done}/${live}` : pl && pl.owe > 0 ? "口渴中" : "開心";
-    html += `<button class="gplant${f.link === famSel ? " sel" : ""}" data-link="${f.link}">
+    // 10 分鐘內剛喝水或剛完成我設的提醒 → 特別標示，盆栽跳一下
+    const fresh = famFresh(f);
+    const tag = f.role === "cared" ? "在照顧你" : !f.push ? "還沒開推播" : fresh ? fresh.text : live ? `今天 ${done}/${live}` : pl && pl.owe > 0 ? "口渴中" : "開心";
+    const jump = fresh && fresh.at > (famSeenAct[f.link] || 0) && famSeenAct[f.link] !== undefined;
+    famSeenAct[f.link] = Math.max(famSeenAct[f.link] || 0, fresh ? fresh.at : 0);
+    html += `<button class="gplant${f.link === famSel ? " sel" : ""}${jump ? " jump" : ""}" data-link="${f.link}">
       <svg viewBox="0 -30 200 245">${plantSVG(st, md, {})}</svg>
-      <span class="nm">${esc(f.nick || f.name)}</span><span class="st">${tag}</span></button>`;
+      <span class="nm">${esc(f.nick || f.name)}</span><span class="st${fresh ? " fresh" : ""}">${tag}</span></button>`;
   });
   html += `</div>`;
+  if (list.length && famUpdated) html += `<div class="gstatus">每 15 秒自動更新・更新於 ${new Date(famUpdated).toTimeString().slice(0,5)}</div>`;
   const f = list.find(x => x.link === famSel);
   if (f){
     html += `<div class="card"><div class="fhead"><span class="nick">${esc(f.nick || f.name)}</span>${f.nick ? `<span class="real">${esc(f.name)}</span>` : ""}<span class="grow" style="flex:1"></span><span class="badge">${ROLE[f.role]}</span></div>`;
@@ -1648,6 +1955,13 @@ function famRender(){
       if (!f.push) html += `<p class="note" style="margin:4px 0 0">${esc(f.nick || f.name)}還沒開推播，提醒和戳一下都送不到，請他到設定開啟。</p>`;
       if (famForm) html += famFormHTML();
     }
+    // 貼圖：只要是家人都能互傳
+    const chat = (fam.stickers || []).filter(x => x.link === f.link).slice(0, 6).reverse();
+    html += `<div class="frow"><div class="top"><span class="n">貼圖</span><button class="btn soft" id="famStk" style="width:auto;margin:0;padding:6px 14px">${famStkOpen ? "收起" : "😊 傳貼圖"}</button></div>`;
+    if (chat.length) html += `<div class="chat">${chat.map(x => `<div class="m${x.mine ? " mine" : ""}">${stkHTML(x.sticker)}<small class="t">${x.mine ? "你" : esc(f.nick || f.name)}・${new Date(x.at).toTimeString().slice(0,5)}</small></div>`).join("")}</div>`;
+    else if (!famStkOpen) html += `<p class="note" style="margin:6px 0 0">還沒有貼圖，傳一個打聲招呼吧！</p>`;
+    if (famStkOpen) html += `<div class="stkgrid">${STICKERS.map(([id]) => `<button data-stk="${id}" aria-label="${STK[id].label}">${stkHTML(id)}</button>`).join("")}</div>`;
+    html += `</div>`;
     html += `<div class="row" style="border-top:1px solid #f3e7d8"><label for="famNick">你怎麼稱呼他</label><input type="text" id="famNick" maxlength="10" value="${esc(f.nick)}" placeholder="${esc(f.name)}"></div>
       <button class="linkbtn" id="famUnlink">解除家人連結</button></div>`;
   }
@@ -1687,6 +2001,14 @@ function famRender(){
   box.innerHTML = html;
   famBind(f);
 }
+function famFresh(f){
+  const pl = f.plant; if (!pl || f.role === "cared") return null;
+  const now = Date.now(), out = [];
+  if (pl.lastDrink && now - pl.lastDrink < 10 * 60000) out.push({ at:pl.lastDrink, text:"剛喝水 💧" });
+  const lh = pl.lastHabit, a = lh && f.assigned.find(x => x.id === lh.id);
+  if (a && now - lh.at < 10 * 60000) out.push({ at:lh.at, text:`剛完成${a.name} ✓` });
+  return out.sort((x, y) => y.at - x.at)[0] || null;
+}
 function famFormHTML(){
   const h = famForm;
   return `<div class="fform">
@@ -1707,6 +2029,10 @@ function famBind(f){
   });
   document.querySelectorAll("[data-pause]").forEach(c => c.onchange = async () => {
     if (await famCall("pause", { habitId:c.dataset.pause, paused:!c.checked }, c.checked ? "已恢復提醒" : "已暫停")) famLoad(); else c.checked = !c.checked;
+  });
+  B("#famStk", () => { famStkOpen = !famStkOpen; famRender(); if (famStkOpen) $(".stkgrid").scrollIntoView({ block:"center", behavior:"smooth" }); });
+  document.querySelectorAll("[data-stk]").forEach(b => b.onclick = async () => {
+    if (await famCall("sticker", { link:f.link, sticker:b.dataset.stk }, `已傳給${f.nick || f.name}：${STK[b.dataset.stk].label}`)){ famStkOpen = false; famLoad(); }
   });
   B("#famPoke", async () => { if (await famCall("poke", { link:f.link }, "戳到了！他的植物去催他了 👉")) famLoad(); });
   B("#famAdd", () => { famForm = { name:"", emoji:"", days:[0,1,2,3,4,5,6], times:["21:00"] }; famRender(); $(".fform").scrollIntoView({ block:"center", behavior:"smooth" }); });
@@ -1793,6 +2119,59 @@ async function showInviteLanding(){
 }
 function maybeAcceptFromUrl(){ const el = $("#famCode"); if (INVITE_CODE && el && !el.value){ el.value = INVITE_CODE; el.scrollIntoView({ block:"center" }); } }
 
+/* ================== 小雞夥伴：在盆栽兩邊走來走去 ================== */
+const PETS = [
+  { el: null, id: "#petY", side: "L", x: null, say: ["啾！", "啾啾～", "嘿嘿 💛", "喝水沒？", "我也要喝！"] },
+  { el: null, id: "#petW", side: "R", x: null, say: ["咕？", "……（盯）", "你喝水了嗎？", "嗯哼", "眨眼眨眼"] }
+];
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+function petZone(p){
+  const yard = $("#yard").getBoundingClientRect(), plant = $("#plant").getBoundingClientRect(), w = p.el.offsetWidth || 64;
+  const potL = plant.left - yard.left + plant.width * .25, potR = plant.left - yard.left + plant.width * .75;   // 盆子在 SVG 的 25%～75%
+  return p.side === "L" ? [4, Math.max(4, potL - w - 2)] : [Math.min(yard.width - w - 4, potR + 2), yard.width - w - 4];
+}
+function petPlace(p, x, instant){
+  const [a, b] = petZone(p); x = Math.min(b, Math.max(a, x));
+  if (p.x !== null && !instant){
+    p.el.classList.toggle("flip", x < p.x);   // 往哪走就面向哪
+    const dist = Math.abs(x - p.x), dur = Math.max(.6, dist / 38);
+    p.el.style.transition = `left ${dur}s ease-in-out`;
+    p.el.classList.add("walk");
+    clearTimeout(p.walkT); p.walkT = setTimeout(() => p.el.classList.remove("walk"), dur * 1000);
+  } else p.el.style.transition = "none";
+  p.x = x; p.el.style.left = x + "px";
+}
+function petHop(p){ p.el.classList.remove("hop"); void p.el.offsetWidth; p.el.classList.add("hop"); setTimeout(() => p.el.classList.remove("hop"), 700); }
+function petAct(p){
+  const asleep = curTheme.time === "night";
+  p.el.classList.toggle("sleep", asleep);
+  if (!document.hidden && !asleep && !reduceMotion && !$("#settings").classList.contains("open")){
+    const r = Math.random(), [a, b] = petZone(p);
+    if (r < .55) petPlace(p, a + Math.random() * (b - a));
+    else if (r < .8) petHop(p);
+    else p.el.classList.toggle("flip");
+  }
+  p.timer = setTimeout(() => petAct(p), 2500 + Math.random() * 4500);
+}
+function petSay(p, text){
+  const t = document.createElement("span"); t.className = "petsay"; t.textContent = text;
+  p.el.appendChild(t); setTimeout(() => t.remove(), 1700);
+}
+function initPets(){
+  PETS.forEach((p, i) => {
+    p.el = $(p.id);
+    const [a, b] = petZone(p);
+    petPlace(p, p.side === "L" ? b : a, true);
+    p.el.addEventListener("click", e => {
+      e.stopPropagation();
+      if (p.el.classList.contains("sleep")){ petSay(p, "Zz…別吵"); return; }
+      petHop(p); petSay(p, pick(p.say));
+    });
+    setTimeout(() => petAct(p), 1500 + i * 1700);
+  });
+  addEventListener("resize", () => PETS.forEach(p => petPlace(p, p.x, true)));
+}
+
 /* ================== 綁定事件 ================== */
 $("#drinkBtn").addEventListener("click", drink);
 $("#standBtn").addEventListener("click", () => {
@@ -1867,7 +2246,7 @@ if ("serviceWorker" in navigator && location.protocol.startsWith("http")){
   // App 開著時收到推播：讓植物和橫幅也一起叫
   navigator.serviceWorker.addEventListener("message", e => {
     if (!e.data || e.data.type !== "push" || !e.data.body) return;
-    famLoad();
+    famLoad().then(() => { if ($("#family").classList.contains("open")) famShowNewStickers(); });
     say(e.data.body);
     const p = $("#plant"); p.classList.remove("ring"); void p.offsetWidth; p.classList.add("ring");
     $("#bannerText").textContent = e.data.body;
@@ -1882,6 +2261,7 @@ render();
 say(data.state.count === 0 && nowMin() < 11*60 && !isQuiet(nowMin()) ? pick(LINES.morning) : moodLine());
 tick();
 setInterval(tick, 20000);
+initPets();
 famDot();
 famLoad();
 setInterval(() => { if (!document.hidden) famLoad(); }, 5 * 60 * 1000);
