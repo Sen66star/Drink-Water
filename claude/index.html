@@ -432,7 +432,7 @@ input[type=text]{width:140px;text-align:right}
   const turb = $("#sp-turb"), disp = $("#sp-disp");
   const faceLines = $$("#sp-face .ln"), bubbleLines = $$("#sp-bubble .ln");
   const order = faceLines.concat(bubbleLines);
-  let speed = 1.5;   // 臉用 1.5 倍速畫，畫到「嗨! 喝水啦」對話框時回到 1 倍速
+  let speed = 1.7;   // 臉用 1.7 倍速畫，畫到「嗨! 喝水啦」對話框時回到 1 倍速
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ease = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
   const frame = () => new Promise(r => requestAnimationFrame(r));
