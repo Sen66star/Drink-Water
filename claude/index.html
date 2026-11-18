@@ -430,7 +430,9 @@ input[type=text]{width:140px;text-align:right}
   const eyes = $$(".eye"), brow = $(".brow"), wl = $(".wl"), wr = $(".wr");
   const fills = $$(".sfill"), text = $("#sp-text"), deco = $("#sp-deco"), twinkles = $$(".tw");
   const turb = $("#sp-turb"), disp = $("#sp-disp");
-  const order = $$("#sp-face .ln").concat($$("#sp-bubble .ln"));
+  const faceLines = $$("#sp-face .ln"), bubbleLines = $$("#sp-bubble .ln");
+  const order = faceLines.concat(bubbleLines);
+  let speed = 1.5;   // 臉用 1.5 倍速畫，畫到「嗨! 喝水啦」對話框時回到 1 倍速
   const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
   const ease = t => t < .5 ? 2*t*t : 1 - Math.pow(-2*t + 2, 2) / 2;
   const frame = () => new Promise(r => requestAnimationFrame(r));
@@ -438,7 +440,7 @@ input[type=text]{width:140px;text-align:right}
   $("#sp-skip").onclick = end;
   order.forEach(p => { const L = p.getTotalLength(); p.style.strokeDasharray = L; p.style.strokeDashoffset = L; });
   async function drawStroke(p, id){
-    const L = p.getTotalLength(), dur = Math.max(160, L * 2.6), t0 = performance.now();
+    const L = p.getTotalLength(), dur = Math.max(160, L * 2.6) / speed, t0 = performance.now();
     while (true){
       if (id !== run) return;
       const t = Math.min(1, (performance.now() - t0) / dur), d = L * ease(t);
@@ -496,7 +498,11 @@ input[type=text]{width:140px;text-align:right}
     }
     await wait(300);
     tip.setAttribute("opacity", 1);
-    for (const p of order){ if (id !== run) return; await drawStroke(p, id); await wait(60 + Math.random() * 70); }
+    for (const p of order){
+      if (id !== run) return;
+      if (p === bubbleLines[0]){ speed = 1; await wait(200); }   // 接近對話框：放慢回正常速度
+      await drawStroke(p, id); await wait((60 + Math.random() * 70) / speed);
+    }
     if (id !== run) return;
     tip.setAttribute("opacity", 0);
     await wait(250); await fadeIn(id);
