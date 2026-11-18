@@ -1,5 +1,5 @@
 // 喝水啦 service worker：離線快取 + 伺服器推播 + 圖示紅點
-const CACHE = "hoshuila-v14";
+const CACHE = "hoshuila-v15";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png", "./lines.json", "./pets/chick-yellow.webp", "./pets/chick-white.webp"];
 
 self.addEventListener("install", e => {

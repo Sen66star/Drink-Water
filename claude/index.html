@@ -118,26 +118,24 @@ body{transition:background .8s}
 .pet.walk .body{animation:petWaddle .38s ease-in-out infinite}
 .pet.run .body{animation:petWaddle .22s ease-in-out infinite}
 .pet.hop .body{animation:petHop .65s ease}
-/* 睡覺：側躺在地上 */
-.pet .lie{display:block;transform-origin:50% 100%;transition:transform .7s cubic-bezier(.4,1.4,.5,1)}
-.pet.sleep .lie{transform:translate(16%,0) rotate(-82deg) scale(.92)}
+/* 睡覺：站著閉眼，頭微微低下，頭上飄出 Zzz */
+.pet .lie{display:block}
 .pet.sleep .body{animation:petSleep 4.2s ease-in-out infinite}
-.pet.sleep .shadow{left:-62%;right:28%;height:10px}
-.pet.sleep .zz{right:auto;left:-18%;top:2%}
-.pet.sleep .zz.z2{left:-30%}
 .pet .lid{position:absolute;border-radius:50%;background:#f6e7d4;opacity:0;transition:opacity .4s;box-shadow:inset 0 -2px 0 #d9bfa0}
 .pet .lid::after{content:"";position:absolute;left:18%;right:18%;top:46%;height:30%;border-bottom:3px solid #6b4a32;border-radius:0 0 50% 50%}
 .pet.sleep .lid{opacity:1}
-.pet .zz{position:absolute;right:-8px;top:-4px;font-size:14px;font-weight:800;color:var(--sky-sub,#7aa6c8);opacity:0}
-.pet .zz.z2{right:-16px;font-size:11px}
-.pet.sleep .zz{animation:petZz 3s ease-in-out infinite}
-.pet.sleep .zz.z2{animation-delay:1.5s}
+.pet .zz{position:absolute;left:55%;top:-6px;font-size:16px;font-weight:900;color:var(--sky-sub,#7aa6c8);opacity:0;pointer-events:none}
+.pet .zz.z2{font-size:12px;left:50%}
+.pet .zz.z3{font-size:20px;left:60%}
+.pet.sleep .zz{animation:petZz 3.6s ease-in-out infinite}
+.pet.sleep .zz.z2{animation-delay:1.2s}
+.pet.sleep .zz.z3{animation-delay:2.4s}
 .petsay{position:absolute;bottom:100%;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:13px;font-weight:800;color:var(--ink);background:#fff;border-radius:10px;padding:3px 8px;box-shadow:0 3px 10px #0002;animation:petSay 1.6s ease forwards;pointer-events:none;z-index:2}
 @keyframes petBreathe{0%,100%{transform:scale(1,1)}50%{transform:scale(1.035,.965)}}
-@keyframes petSleep{0%,100%{transform:scale(1,1)}50%{transform:scale(1.04,.97)}}
+@keyframes petSleep{0%,100%{transform:rotate(4deg) scale(1,1)}50%{transform:rotate(6deg) scale(1.04,.96)}}
 @keyframes petWaddle{0%,100%{transform:rotate(-6deg) translateY(0)}50%{transform:rotate(6deg) translateY(-3px)}}
 @keyframes petHop{0%,100%{transform:translateY(0) scale(1)}20%{transform:translateY(0) scale(1.1,.86)}50%{transform:translateY(-28px) scale(.94,1.07)}80%{transform:translateY(0) scale(1.07,.92)}}
-@keyframes petZz{0%{opacity:0;transform:translate(0,0)}30%{opacity:1}100%{opacity:0;transform:translate(10px,-18px)}}
+@keyframes petZz{0%{opacity:0;transform:translate(0,0) scale(.6)}25%{opacity:1}100%{opacity:0;transform:translate(14px,-30px) scale(1.1)}}
 @keyframes petSay{0%{opacity:0;transform:translate(-50%,6px)}15%{opacity:1;transform:translate(-50%,-4px)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-14px)}}
 @media (prefers-reduced-motion: reduce){.pet .body,.pet .lie{animation:none!important;transition:none!important}}
 .plant-meta{margin-top:8px;background:#ffffffc4;border-radius:14px;padding:7px 14px;font-size:13px;color:var(--sub);text-align:center;min-width:200px}
@@ -541,9 +539,9 @@ input[type=text]{width:140px;text-align:right}
     <div class="yard" id="yard">
       <div class="floor" id="floor"></div>
       <svg id="plant" viewBox="0 -30 200 245" role="img" aria-label="小植物"></svg>
-      <button class="pet" id="petY" aria-label="小黃雞"><span class="shadow"></span><span class="lie"><span class="body"><img src="pets/chick-yellow.webp" alt=""></span></span><span class="zz">z</span><span class="zz z2">z</span></button>
+      <button class="pet" id="petY" aria-label="小黃雞"><span class="shadow"></span><span class="lie"><span class="body"><img src="pets/chick-yellow.webp" alt=""></span></span><span class="zz">Z</span><span class="zz z2">z</span><span class="zz z3">Z</span></button>
       <button class="pet" id="petW" aria-label="小白雞"><span class="shadow"></span><span class="lie"><span class="body"><img src="pets/chick-white.webp" alt="">
-        <span class="lid" style="left:23%;top:30%;width:31%;height:27%"></span><span class="lid" style="left:50%;top:30%;width:31%;height:27%"></span></span></span><span class="zz">z</span><span class="zz z2">z</span></button>
+        <span class="lid" style="left:23%;top:30%;width:31%;height:27%"></span><span class="lid" style="left:50%;top:30%;width:31%;height:27%"></span></span></span><span class="zz">Z</span><span class="zz z2">z</span><span class="zz z3">Z</span></button>
     </div>
     <div class="plant-meta">
       <div id="plantInfo"></div>
@@ -2232,7 +2230,7 @@ function petAct(p){
   const asleep = curTheme.time === "night";
   if (asleep !== p.el.classList.contains("sleep")){
     p.el.classList.toggle("sleep", asleep);
-    if (asleep && !petEvent){ const [x] = petHome(p); petMove(p, x, .3 + Math.random() * .15); }   // 找個稍微後面的地方躺下
+    if (asleep && !petEvent) petMove(p, ...petHome(p));   // 走到自己那邊站著睡
   }
   const busy = document.hidden || reduceMotion || petEvent || $("#settings").classList.contains("open") || $("#family").classList.contains("open");
   if (!busy && !asleep){
