@@ -466,7 +466,7 @@ async function generateLines(env, name, plant) {
 
 /* ================== 家園（家人提醒） ================== */
 const FAM_MAX = 5, ASSIGN_MAX = 6;
-const CODE_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const CODE_CHARS = "0123456789";   // 邀請碼只用數字，長輩比較好輸入
 const rid = (n, chars = "abcdefghijkmnpqrstuvwxyz23456789") => Array.from(crypto.getRandomValues(new Uint8Array(n)), x => chars[x % chars.length]).join("");
 function cleanHabit(h) {
   const t = v => (typeof v === "string" && /^\d{2}:\d{2}$/.test(v) ? v : null);
@@ -614,7 +614,8 @@ async function familyApi(action, b, env, h) {
     const n = (await env.DB.prepare("SELECT COUNT(*) AS n FROM links WHERE a = ?1 OR b = ?1").bind(me).first()).n;
     if (n >= FAM_MAX) return json({ error: `最多只能連結 ${FAM_MAX} 位家人` }, 400, h);
     await env.DB.prepare("DELETE FROM invites WHERE created < ?").bind(now - 7 * 86400000).run();
-    const code = rid(6, CODE_CHARS);
+    let code = rid(6, CODE_CHARS);
+    for (let i = 0; i < 5 && await env.DB.prepare("SELECT code FROM invites WHERE code = ?").bind(code).first(); i++) code = rid(6, CODE_CHARS);   // 避免撞號
     await env.DB.prepare("INSERT INTO invites (code, from_id, type, created) VALUES (?, ?, ?, ?)").bind(code, me, b.type === "care" ? "care" : "mutual", now).run();
     return json({ code }, 200, h);
   }

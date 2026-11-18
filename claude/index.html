@@ -76,7 +76,8 @@ body{transition:background .8s}
 .chip{font-size:13px;font-weight:600;color:var(--sub);background:#ffffffb3;border-radius:999px;padding:6px 11px;white-space:nowrap}
 .chip b{color:var(--ink)}
 .topbar .grow{flex:1}
-.famchip{position:relative;display:flex;align-items:center;gap:4px;color:var(--ink)}
+.famchip{position:relative;display:flex;align-items:center;gap:5px;color:var(--ink);font-size:16px;font-weight:800;padding:9px 16px;min-height:40px;background:#ffffffd9;box-shadow:0 2px 8px #1a5c8f1f}
+.famchip:active{transform:scale(.95)}
 .famchip .dot{position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#ff4d4f;border:2px solid #fff;display:none}
 .famchip.new .dot{display:block}
 .iconbtn{width:40px;height:40px;border-radius:50%;background:#ffffffb3;display:grid;place-items:center}
@@ -282,7 +283,7 @@ input[type=text]{width:140px;text-align:right}
     <span class="chip" id="dateChip"></span>
     <span class="chip" id="streakChip"></span>
     <span class="grow"></span>
-    <button class="chip famchip" id="openFamily" aria-label="家人">👨‍👩‍👧 家人<span class="dot"></span></button>
+    <button class="chip famchip" id="openFamily" aria-label="家園">❤️ 家園<span class="dot"></span></button>
     <button class="iconbtn" id="openSettings" aria-label="設定">
       <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
     </button>
@@ -1599,7 +1600,7 @@ function famRender(){
     box.innerHTML = `<div class="card" style="padding:18px 16px">
       <p style="font-size:17px;font-weight:800;margin:0 0 6px">先告訴家人你是誰 🌱</p>
       <p class="note" style="margin:0 0 12px">家人收到你的邀請、被你戳一下時，會看到這個名字。</p>
-      <input type="text" id="famName" maxlength="10" placeholder="例如：Sen、小明、媽媽" style="width:100%;margin-bottom:12px">
+      <input type="text" id="famName" maxlength="10" placeholder="例如：Sen、小明、媽媽" style="width:100%;margin-bottom:12px;text-align:center">
       <button class="btn primary" id="famNameSave">開始使用家園</button></div>`;
     $("#famNameSave").onclick = async () => {
       const name = $("#famName").value.trim(); if (!name) return alert("請填你的名字");
@@ -1676,7 +1677,7 @@ function famRender(){
   html += `</div>`;
   // 輸入邀請碼
   html += `<div class="sec-title">收到邀請？</div><div class="card" style="padding-bottom:14px">
-    <div class="row"><label for="famCode">邀請碼</label><input type="text" id="famCode" maxlength="8" placeholder="6 碼英數" style="text-transform:uppercase;width:130px"></div>
+    <div class="row"><label for="famCode">邀請碼</label><input type="text" id="famCode" maxlength="8" inputmode="numeric" pattern="[0-9]*" placeholder="6 位數字" style="width:130px;letter-spacing:2px"></div>
     <div class="row"><label for="famCodeNick">你怎麼稱呼他</label><input type="text" id="famCodeNick" maxlength="10" placeholder="可以不填"></div>
     <button class="btn soft" id="famAccept" style="margin-top:10px">加入</button></div>`;
   // 我的設定
@@ -1781,7 +1782,7 @@ async function showInviteLanding(){
     <ol>
       <li>還沒安裝的話：按 Safari 下方「分享 → 加入主畫面」</li>
       <li>從主畫面打開「喝水啦」，到設定開啟推播</li>
-      <li>按上方「👨‍👩‍👧 家人」，在「收到邀請？」貼上邀請碼，按加入</li>
+      <li>按上方「❤️ 家園」，在「收到邀請？」貼上邀請碼，按加入</li>
     </ol>
     <button class="linkbtn" id="landClose" style="color:#8a6a58">先看看 App</button>`
     : `<h2>這個邀請已經失效</h2><p class="note">請家人重新產生一個邀請連結給你。</p><button class="btn primary" id="landClose" style="background:#d9703f">好</button>`;
