@@ -1665,7 +1665,8 @@ function famRender(){
   else if (famInvite){
     const url = inviteURL(famInvite.code);
     html += `<div class="invite-box"><div class="note" style="margin:0">把連結傳給家人，或請他輸入邀請碼</div><div class="code">${famInvite.code}</div><div class="url">${esc(url)}</div></div>
-      <div class="fbtns"><button class="btn primary" id="famShare">用 LINE 等分享</button><button class="btn soft" id="famCopy">複製連結</button></div>
+      <div class="fbtns"><button class="btn primary" id="famShare">分享給家人</button><button class="btn soft" id="famCopy">複製邀請訊息</button></div>
+      <p class="note">LINE、微信都可以：按「分享給家人」選 App，或按「複製邀請訊息」貼到聊天室。訊息裡有邀請碼，就算連結打不開，對方照樣能加入。</p>
       <p class="note">邀請 7 天內有效，只能用一次。對方是「${famInvite.type === "care" ? "你照顧他" : "互相照顧"}」。</p>`;
   } else {
     html += `<div class="seg" id="famType"><button data-t="mutual" class="on">互相照顧</button><button data-t="care">我照顧他</button></div>
@@ -1741,11 +1742,14 @@ function famBind(f){
     $("#famTypeNote").textContent = type === "care" ? "只有你能幫他設提醒、看他的進度，適合照顧長輩。他會看到「你在照顧他」。" : "彼此都能幫對方設提醒、看到對方的進度。";
   });
   B("#famInviteBtn", async () => { const r = await famCall("invite", { type }); if (r){ famInvite = { code:r.code, type }; famRender(); } });
+  // 連結和邀請碼都放在文字裡：微信分享時常只留連結或只留文字，這樣兩種情況都看得到邀請碼
+  const inviteText = () => `${fam.me.name} 邀請你加入「喝水啦」的家園，一起互相提醒 🌱\n邀請碼：${famInvite.code}\n用 Safari 打開這個連結看加入方式：\n${inviteURL(famInvite.code)}`;
+  const copyInvite = async () => { try{ await navigator.clipboard.writeText(inviteText()); showToast("已複製，貼到 LINE 或微信給家人", false); }catch(e){ prompt("複製這段邀請訊息", inviteText()); } };
   B("#famShare", async () => {
-    const url = inviteURL(famInvite.code), text = `${fam.me.name} 邀請你加入「喝水啦」的家園，一起互相提醒 🌱\n邀請碼：${famInvite.code}`;
-    try{ if (navigator.share) await navigator.share({ title:"家園邀請", text, url }); else { await navigator.clipboard.writeText(text + "\n" + url); showToast("已複製，貼到 LINE 給家人", false); } }catch(e){}
+    if (!navigator.share) return copyInvite();
+    try{ await navigator.share({ title:"家園邀請", text: inviteText() }); }catch(e){}
   });
-  B("#famCopy", async () => { try{ await navigator.clipboard.writeText(inviteURL(famInvite.code)); showToast("已複製連結", false); }catch(e){ prompt("複製這個連結", inviteURL(famInvite.code)); } });
+  B("#famCopy", copyInvite);
   B("#famAccept", async () => {
     const code = $("#famCode").value.trim().toUpperCase(); if (!code) return alert("請輸入邀請碼");
     if (await famCall("accept", { code, nick:$("#famCodeNick").value.trim() }, "成為家人了 🌱")){ famInvite = null; famSel = null; await famLoad(); }
@@ -1761,7 +1765,14 @@ async function showInviteLanding(){
   if (standalone){ openFamily(); setTimeout(maybeAcceptFromUrl, 300); return; }
   let who = "家人", type = "mutual";
   try{ const r = await api("/family/peek", { code:INVITE_CODE }); who = r.fromName; type = r.type; }catch(e){ who = ""; }
+  // 在微信、LINE 等 App 的內建瀏覽器裡沒辦法加入主畫面，要先換到 Safari
+  const ua = navigator.userAgent;
+  const inApp = /MicroMessenger/i.test(ua) ? "wechat" : /\bLine\//i.test(ua) ? "line" : /FBAN|FBAV|Instagram/i.test(ua) ? "other" : "";
+  const hint = { wechat:"這個頁面是在微信裡打開的，沒辦法加入主畫面。請點右上角「···」→「在 Safari 中打開」。",
+                 line:"這個頁面是在 LINE 裡打開的，沒辦法加入主畫面。請點右下角「⋯」或分享圖示 →「用 Safari 開啟」。",
+                 other:"這個頁面是在 App 的內建瀏覽器裡打開的，沒辦法加入主畫面。請從右上角選單選「用 Safari 開啟」。" }[inApp];
   $("#inviteBox").innerHTML = who ? `
+    ${hint ? `<div style="background:#fff1d6;color:#8a5a1f;border-radius:12px;padding:10px 12px;font-size:14px;font-weight:700;text-align:left;margin-bottom:6px">⚠️ ${hint}<br><span style="font-weight:600">已經安裝過的話，直接複製邀請碼就好。</span></div>` : ""}
     <div style="font-size:40px">🌱</div>
     <h2>${esc(who)} 邀請你加入家園</h2>
     <p class="note" style="margin:0">${type === "care" ? `${esc(who)} 想照顧你，會幫你設提醒，讓植物準時叫你。` : "你們可以互相幫對方設提醒、看彼此的進度。"}</p>
