@@ -476,7 +476,8 @@ async function generateLines(env, name, plant) {
 const FAM_MAX = 5, ASSIGN_MAX = 6;
 // 貼圖代號 → 通知裡顯示的文字（要跟網頁的 STICKERS 一致）
 const STICKERS = { s01:"早安 🌅", s02:"晚安 🌙", s03:"想你 🥺", s04:"愛你 ❤️", s05:"抱抱 🤗", s06:"加油 💪", s07:"辛苦了 🍵", s08:"謝謝 🙏", s09:"哈哈哈 😂", s10:"讚 👍",
-  s11:"吃飯沒 🍚", s12:"多喝水 💧", s13:"早點睡 😴", s14:"收到 🫡", s15:"OK 👌", s16:"哭哭 😭", s17:"生氣氣 😤", s18:"在嗎？ 👀", s19:"出門小心 ☂️", s20:"到家了 🏠" };
+  s11:"吃飯沒 🍚", s12:"多喝水 💧", s13:"早點睡 😴", s14:"收到 🫡", s15:"OK 👌", s16:"哭哭 😭", s17:"生氣氣 😤", s18:"在嗎？ 👀", s19:"出門小心 ☂️", s20:"到家了 🏠",
+  s21:"哇噻 🤩", s22:"歐耶 🥳", s23:"啊啊啊 🤯", s24:"嗚嗚嗚 🥹", s25:"嘿嘿 😎" };
 const CODE_CHARS = "0123456789";   // 邀請碼只用數字，長輩比較好輸入
 const rid = (n, chars = "abcdefghijkmnpqrstuvwxyz23456789") => Array.from(crypto.getRandomValues(new Uint8Array(n)), x => chars[x % chars.length]).join("");
 function cleanHabit(h) {
