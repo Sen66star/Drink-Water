@@ -418,17 +418,16 @@ input[type=text]{width:140px;text-align:right}
 </div>
 <script>
 /* 開場動畫：從頭一筆一筆畫，畫完填色、角色動起來後自動進入；右上角可跳過。
-   點通知（?from=push）或邀請連結打開時不播，免得耽誤正事；早中晚各只播一次。 */
+   點通知（?from=push）或邀請連結打開時不播，免得耽誤正事；凌晨、早、中、晚各只播一次。 */
 (() => {
   const root = document.getElementById("splash");
   const q = new URLSearchParams(location.search);
   const end = () => { if (root.dataset.done) return; root.dataset.done = 1; run++; root.classList.add("out"); setTimeout(() => root.remove(), 550); };
   let run = 0;
   if (q.get("from") === "push" || q.get("invite")) { root.remove(); return; }
-  /* 早(06–12)、中(12–18)、晚(18–24)各播一次；00–06 算前一天晚上，不再播 */
+  /* 凌晨(00–06)、早(06–12)、中(12–18)、晚(18–24)各播一次 */
   const now = new Date(), h = now.getHours();
-  const day = new Date(now); if (h < 6) day.setDate(day.getDate() - 1);
-  const slot = `${day.getFullYear()}-${day.getMonth()+1}-${day.getDate()}-${h < 6 || h >= 18 ? "eve" : h >= 12 ? "noon" : "am"}`;
+  const slot = `${now.getFullYear()}-${now.getMonth()+1}-${now.getDate()}-${Math.floor(h / 6)}`;
   let seen = null; try { seen = localStorage.getItem("hoshuila-splash"); } catch {}
   if (seen === slot) { root.remove(); return; }
   try { localStorage.setItem("hoshuila-splash", slot); } catch {}
