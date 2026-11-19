@@ -1,5 +1,5 @@
 // 喝水啦 service worker：離線快取 + 伺服器推播 + 圖示紅點
-const CACHE = "hoshuila-v23";
+const CACHE = "hoshuila-v24";
 const ASSETS = ["./", "./index.html", "./manifest.webmanifest", "./icon-180.png", "./icon-512.png", "./lines.json", "./pets/chick-yellow.webp", "./pets/chick-white.webp", "./pets/chick-white-sleep.webp",
   ...Array.from({ length: 33 }, (_, i) => `./stickers/s${String(i + 1).padStart(2, "0")}.webp`)];
 

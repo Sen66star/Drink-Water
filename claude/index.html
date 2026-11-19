@@ -2066,7 +2066,16 @@ function famBind(f){
   });
   B("#famStk", () => { famStkOpen = !famStkOpen; famRender(); if (famStkOpen) $(".stkgrid").scrollIntoView({ block:"center", behavior:"smooth" }); });
   document.querySelectorAll("[data-stk]").forEach(b => b.onclick = async () => {
-    if (await famCall("sticker", { link:f.link, sticker:b.dataset.stk }, `已傳給${f.nick || f.name}：${STK[b.dataset.stk].label}`)){ famStkOpen = false; famLoad(); }
+    // 先顯示在聊天裡、立刻關掉選單，背景再送出；失敗才收回來
+    const id = b.dataset.stk, item = { link:f.link, sticker:id, mine:true, at:Date.now(), pending:true };
+    fam.stickers = [item, ...(fam.stickers || [])];
+    famStkOpen = false; famRender();
+    showToast(`已傳給${f.nick || f.name}：${STK[id].label}`, false);
+    try{ await api("/family/sticker", { id: deviceId(), link:f.link, sticker:id }); famLoad(); }
+    catch(e){
+      fam.stickers = fam.stickers.filter(x => x !== item); famRender();
+      showToast("貼圖沒傳出去，網路好像怪怪的，再試一次", false);
+    }
   });
   B("#famPoke", async () => { if (await famCall("poke", { link:f.link }, "戳到了！他的植物去催他了 👉")) famLoad(); });
   B("#famAdd", () => { famForm = { name:"", emoji:"", days:[0,1,2,3,4,5,6], times:["21:00"] }; famRender(); $(".fform").scrollIntoView({ block:"center", behavior:"smooth" }); });
