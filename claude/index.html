@@ -121,9 +121,8 @@ body{transition:background .8s}
 /* 睡覺：站著閉眼，頭微微低下，頭上飄出 Zzz */
 .pet .lie{display:block}
 .pet.sleep .body{animation:petSleep 4.2s ease-in-out infinite}
-.pet .lid{position:absolute;border-radius:50%;background:#f6e7d4;opacity:0;transition:opacity .4s;box-shadow:inset 0 -2px 0 #d9bfa0}
-.pet .lid::after{content:"";position:absolute;left:18%;right:18%;top:46%;height:30%;border-bottom:3px solid #6b4a32;border-radius:0 0 50% 50%}
-.pet.sleep .lid{opacity:1}
+.pet .slp{position:absolute;left:0;top:0;opacity:0;transition:opacity .4s}
+.pet.sleep .slp{opacity:1}
 .pet .zz{position:absolute;left:55%;top:-6px;font-size:16px;font-weight:900;color:var(--sky-sub,#7aa6c8);opacity:0;pointer-events:none}
 .pet .zz.z2{font-size:12px;left:50%}
 .pet .zz.z3{font-size:20px;left:60%}
@@ -553,8 +552,7 @@ input[type=text]{width:140px;text-align:right}
       <div class="floor" id="floor"></div>
       <svg id="plant" viewBox="0 -30 200 245" role="img" aria-label="小植物"></svg>
       <button class="pet" id="petY" aria-label="小黃雞"><span class="shadow"></span><span class="lie"><span class="body"><img src="pets/chick-yellow.webp" alt=""></span></span><span class="zz">Z</span><span class="zz z2">z</span><span class="zz z3">Z</span></button>
-      <button class="pet" id="petW" aria-label="小白雞"><span class="shadow"></span><span class="lie"><span class="body"><img src="pets/chick-white.webp" alt="">
-        <span class="lid" style="left:23%;top:30%;width:31%;height:27%"></span><span class="lid" style="left:50%;top:30%;width:31%;height:27%"></span></span></span><span class="zz">Z</span><span class="zz z2">z</span><span class="zz z3">Z</span></button>
+      <button class="pet" id="petW" aria-label="小白雞"><span class="shadow"></span><span class="lie"><span class="body"><img src="pets/chick-white.webp" alt=""><img class="slp" src="pets/chick-white-sleep.webp" alt=""></span></span><span class="zz">Z</span><span class="zz z2">z</span><span class="zz z3">Z</span></button>
     </div>
     <div class="plant-meta">
       <div id="plantInfo"></div>
