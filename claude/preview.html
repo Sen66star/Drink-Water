@@ -1601,7 +1601,7 @@ function renderPlant(md){
   const key = cur.sp + st + md + (bl ? bl.form + bl.shiny : "");
   if (key !== lastPlantKey){
     const p = $("#plant");
-    p.innerHTML = bl ? `<img src="${plantImg(cur.sp, bl.form, bl.shiny)}" alt="${SPECIES[cur.sp].name}">`
+    p.innerHTML = bl ? `<img src="${plantImg(cur.sp, bl.form + "_pot", bl.shiny)}" alt="${SPECIES[cur.sp].name}">`
                      : `<img src="${plantImg(cur.sp, GSTAGES[st].img)}" alt="${GSTAGES[st].name}">`;
     p.classList.toggle("thirsty", md === "thirsty");
     p.classList.toggle("sleepy", md === "sleepy");
