@@ -335,6 +335,8 @@ input[type=text]{width:140px;text-align:right}
 .buddy img{width:100%;display:block;transform-origin:50% 100%;animation:petBreathe 3s ease-in-out infinite;pointer-events:none}
 .buddy.hop img{animation:petHop .65s ease}
 .codex-link{display:inline-block;margin-top:6px;font-size:12.5px;font-weight:800;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:3px 12px}
+.codex-link[hidden]{display:none}
+#plantSeed{background:#2b9a48;color:#fff;margin-right:4px}
 #codex{position:fixed;inset:0;z-index:6;background:#f4f8f2;overflow-y:auto;-webkit-overflow-scrolling:touch;
   transform:translateX(-100%);transition:transform .35s ease;padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 32px)}
 #codex.open{transform:translateX(0)}
@@ -610,6 +612,7 @@ input[type=text]{width:140px;text-align:right}
     <div class="plant-meta">
       <div id="plantInfo"></div>
       <div class="bar"><i id="plantBar"></i></div>
+      <button class="codex-link" id="plantSeed" hidden>🌱 播下新種子</button>
       <button class="codex-link" id="openCodex">📖 圖鑑・種子袋</button>
     </div>
     <div class="habits" id="habitChips"></div>
@@ -1555,11 +1558,20 @@ function bloom(){
   const isNew = !c.forms[form] && !(shiny && c.shiny[form]);
   (shiny ? c.shiny : c.forms)[form] = (shiny ? c.shiny : c.forms)[form] || dayKey();
   g.blooms = (g.blooms || 0) + 1;
-  const firstBuddy = !g.buddy;
-  if (firstBuddy) g.buddy = { sp:cur.sp, shiny };
-  g.wake = { sp:cur.sp, form, shiny, isNew, firstBuddy };
-  g.cur = newPlant(g.bag.length ? g.bag.shift() : pick(COMMON));
+  cur.bloomed = { form, shiny, day:dayKey() };   // 開花後留在盆栽裡，等使用者自己決定要不要播新種子
+  g.wake = { sp:cur.sp, form, shiny, isNew };
   save();
+}
+// 播下新種子：開好的精靈回到圖鑑；還沒有夥伴的話，它就搬到盆栽旁邊當夥伴
+function plantNewSeed(){
+  const g = garden(), cur = g.cur; if (!cur.bloomed) return;
+  const name = SPECIES[cur.sp].name, toBuddy = !g.buddy;
+  if (!confirm(toBuddy ? `播下新種子後，${name}會搬到盆栽旁邊當你的首頁夥伴。要播種嗎？` : `播下新種子後，${name}會回到圖鑑裡（隨時可以設成首頁夥伴）。要播種嗎？`)) return;
+  if (toBuddy) g.buddy = { sp:cur.sp, shiny:cur.bloomed.shiny };
+  g.cur = newPlant(g.bag.length ? g.bag.shift() : pick(COMMON));
+  save(); lastPlantKey = ""; render();
+  if ($("#codex").classList.contains("open")) renderCodex();
+  say("新的種子種下去了，這次會長出什麼呢？🌱"); rain("🌱");
 }
 // 節日當天打開 App 就送一顆節日種子（每年一次）
 function festGift(){
@@ -1576,6 +1588,7 @@ function festGift(){
 // 每次畫面更新時檢查：長大、開花
 function gardenTick(){
   const g = garden(), cur = g.cur, d = gDays(cur);
+  if (cur.bloomed) return;
   if (d >= bloomDayOf(cur)){ bloom(); showWake(); return; }
   const st = gStageOf(d);
   if (st > (cur.stage || 0)){
@@ -1584,20 +1597,29 @@ function gardenTick(){
   }
 }
 function renderPlant(md){
-  const g = garden(), cur = g.cur, d = gDays(cur), st = gStageOf(d);
-  const key = cur.sp + st + md;
+  const g = garden(), cur = g.cur, d = gDays(cur), st = gStageOf(d), bl = cur.bloomed;
+  const key = cur.sp + st + md + (bl ? bl.form + bl.shiny : "");
   if (key !== lastPlantKey){
     const p = $("#plant");
-    p.innerHTML = `<img src="${plantImg(cur.sp, GSTAGES[st].img)}" alt="${GSTAGES[st].name}">`;
+    p.innerHTML = bl ? `<img src="${plantImg(cur.sp, bl.form, bl.shiny)}" alt="${SPECIES[cur.sp].name}">`
+                     : `<img src="${plantImg(cur.sp, GSTAGES[st].img)}" alt="${GSTAGES[st].name}">`;
     p.classList.toggle("thirsty", md === "thirsty");
     p.classList.toggle("sleepy", md === "sleepy");
     lastPlantKey = key;
   }
-  const nm = data.settings.plantName || "小芽", total = bloomDayOf(cur), left = Math.max(1, total - d);
-  $("#plantInfo").innerHTML = `<b>${nm}</b>・${GSTAGES[st].name}　第 <b>${d + 1}</b> 天，再 <b>${left}</b> 天開花`;
-  $("#plantBar").style.width = Math.min(100, (d + 1) / total * 100) + "%";
+  const nm = data.settings.plantName || "小芽";
+  if (bl){
+    const since = todayNo() - keyToNo(bl.day);
+    $("#plantInfo").innerHTML = `<b>${nm}</b>是<b>${SPECIES[cur.sp].name}</b>（${FORM_NAME[bl.form]}型${bl.shiny ? "・✨異色" : ""}）・開花${since ? `第 ${since + 1} 天` : "了"}`;
+    $("#plantBar").style.width = "100%";
+  } else {
+    const total = bloomDayOf(cur), left = Math.max(1, total - d);
+    $("#plantInfo").innerHTML = `<b>${nm}</b>・${GSTAGES[st].name}　第 <b>${d + 1}</b> 天，再 <b>${left}</b> 天開花`;
+    $("#plantBar").style.width = Math.min(100, (d + 1) / total * 100) + "%";
+  }
+  $("#plantSeed").hidden = !bl;
   const b = $("#buddy"), bd = g.buddy;
-  b.hidden = !bd;
+  b.hidden = !bd || (bl && bd.sp === cur.sp && bd.shiny === bl.shiny);   // 跟盆栽裡的是同一隻就不重複顯示
   if (bd){
     const src = plantImg(bd.sp, "idle", bd.shiny);
     const im = b.querySelector("img");
@@ -1613,7 +1635,7 @@ function showWake(){
     ${w.shiny ? `<div class="shiny">✨ 稀有異色 ✨</div>` : ""}
     <div class="s">原來是 <b>${sp.name}</b>！開出了「${FORM_NAME[w.form]}型」${w.isNew ? "，第一次收集到 🎉" : ""}<br>
     ${w.form === "drought" ? "雖然有點乾，但它說它很好。" : FORM_HINT[w.form]}</div>
-    ${w.firstBuddy ? `<div class="s">它會當你的首頁夥伴，陪在新種子旁邊。</div>` : ""}
+    <div class="s">它會一直待在盆栽裡陪你。想種新的種子時，按盆栽下方的「播下新種子」。</div>
     <button class="btn primary" id="wakeOk" style="margin-bottom:0">收進圖鑑</button>`;
   $("#wake").classList.add("show");
   rain(w.shiny ? "✨" : "🌸");
@@ -1621,7 +1643,7 @@ function showWake(){
     g.wake = null; save();
     $("#wake").classList.remove("show");
     lastPlantKey = ""; render();
-    say("新的種子種下去了，這次會長出什麼呢？🌱");
+    say(pick(BUDDY_LINES[w.sp] || ["你好呀！"]));
   };
 }
 
@@ -1634,13 +1656,16 @@ function renderCodex(){
   let h = `<div class="sec-title">首頁夥伴</div><div class="card">`;
   h += bd ? `<div class="cx-buddy"><img src="${plantImg(bd.sp, "idle", bd.shiny)}" alt=""><div><b>${SPECIES[bd.sp].name}</b>${bd.shiny ? "（異色）" : ""}<div class="note" style="margin:2px 0 0">點下面收集到的精靈，可以換夥伴。</div></div></div>`
           : `<p class="note" style="margin:12px 0">第一株植物開花後，醒來的精靈會當你的首頁夥伴。</p>`;
-  h += `</div><div class="sec-title">現在種的</div><div class="card"><p class="note" style="margin:12px 0"><b style="color:var(--ink)">${esc(s.plantName || "小芽")}</b>・${GSTAGES[gStageOf(d)].name}，第 ${d + 1} 天。開花時會依這段期間的表現長成不同型態，有 1/20 的機率是稀有異色。</p></div>`;
+  h += `</div><div class="sec-title">盆栽裡</div><div class="card">`;
+  h += cur.bloomed ? `<p class="note" style="margin:12px 0 6px"><b style="color:var(--ink)">${SPECIES[cur.sp].name}</b>（${FORM_NAME[cur.bloomed.form]}型${cur.bloomed.shiny ? "・✨異色" : ""}）開花了，正待在盆栽裡。想種下一顆時再播種就好。</p><button class="btn soft" id="cxSeed" style="margin-top:4px">🌱 播下新種子</button>`
+    : `<p class="note" style="margin:12px 0"><b style="color:var(--ink)">${esc(s.plantName || "小芽")}</b>・${GSTAGES[gStageOf(d)].name}，第 ${d + 1} 天。開花時會依這段期間的表現長成不同型態，有 1/20 的機率是稀有異色。</p>`;
+  h += `</div>`;
   h += `<div class="sec-title">種子袋（${g.bag.length}/${BAG_MAX}）</div><div class="card"><div class="bag">`;
   for (let i = 0; i < BAG_MAX; i++){
     const sp = g.bag[i];
     h += sp ? `<img src="plants/${SPECIES[sp].icon || "seedicon_default"}.webp" alt="${SPECIES[sp].icon ? SPECIES[sp].name + "種子" : "種子"}">` : `<span class="empty"></span>`;
   }
-  h += `</div><p class="note">開花後會自動從袋子拿一顆種下；袋子空了就隨機抽一顆。節日當天打開 App 會收到節日限定種子。</p></div>`;
+  h += `</div><p class="note">播下新種子時，會先從袋子拿；袋子空了就隨機抽一顆。節日當天打開 App 會收到節日限定種子。</p></div>`;
   const total = Object.keys(SPECIES).length * 6;
   const got = Object.values(g.codex).reduce((n, c) => n + new Set([...Object.keys(c.forms), ...Object.keys(c.shiny)]).size, 0);
   h += `<div class="sec-title">精靈圖鑑（${got}/${total}）</div>`;
@@ -1677,6 +1702,7 @@ function renderCodex(){
     g.buddy = { sp:b.dataset.buddy, shiny:b.dataset.sh === "1" }; save(); renderCodex();
     showToast(`${SPECIES[g.buddy.sp].name}現在是你的首頁夥伴`, false);
   });
+  if ($("#cxSeed")) $("#cxSeed").onclick = plantNewSeed;
   document.querySelectorAll("#codexBody [data-toggle]").forEach(b => b.onclick = () => { cxShiny[b.dataset.toggle] = !cxShiny[b.dataset.toggle]; renderCodex(); });
 }
 
@@ -1701,7 +1727,7 @@ function devBar(){
       cur.log = log;
       showToast(ok ? "快轉了一天：喝水、起身、習慣都達標" : "快轉了一天：都沒喝水", false);
     }
-    if (a === "bloom"){ bloom(); showWake(); }
+    if (a === "bloom"){ if (cur.bloomed){ showToast("盆栽裡已經開花了，先播下新種子", false); return; } bloom(); showWake(); }
     if (a === "seed"){ g.bag.unshift(pick(["xmas","firework","nian"])); g.bag = g.bag.slice(0, BAG_MAX); showToast("種子袋多了一顆節日種子", false); }
     save(); lastPlantKey = ""; render();
     if ($("#codex").classList.contains("open")) renderCodex();
@@ -2601,7 +2627,8 @@ $("#standBtn").addEventListener("click", () => {
 $("#undoBtn").addEventListener("click", undo);
 $("#plant").addEventListener("click", () => {
   const p = $("#plant"); p.classList.remove("bounce"); void p.offsetWidth; p.classList.add("bounce");
-  say(moodLine());
+  const cur = garden().cur;
+  say(cur.bloomed && Math.random() < .6 ? pick(BUDDY_LINES[cur.sp] || ["嗨！"]) : moodLine());
 });
 $("#banner").addEventListener("click", () => $("#banner").classList.remove("show"));
 $("#openSettings").addEventListener("click", openSettings);
@@ -2629,6 +2656,7 @@ $("#plantName").addEventListener("input", e => { data.settings.plantName = e.tar
 $("#pushBtn").addEventListener("click", enablePush);
 $("#openFamily").addEventListener("click", openFamily);
 $("#openCodex").addEventListener("click", openCodex);
+$("#plantSeed").addEventListener("click", plantNewSeed);
 $("#closeCodex").addEventListener("click", closeCodex);
 $("#buddy").addEventListener("click", () => {
   const b = $("#buddy"), bd = garden().buddy; if (!bd) return;
